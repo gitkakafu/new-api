@@ -73,14 +73,60 @@ func registeredSystemTaskHandlers() []SystemTaskHandler {
 	return handlers
 }
 
-// logCleanupHandler wraps the existing on-demand log cleanup task as a
-// registered (non-scheduled) handler. It is created via StartLogCleanupTask.
+// Default consume-log retention for why-master scheduled cleanup.
+// Override with LOG_RETENTION_DAYS / LOG_RETENTION_CLEANUP_* env vars.
+const (
+	defaultLogRetentionDays              = 90
+	defaultLogRetentionCleanupIntervalH  = 24
+	envLogRetentionDays                  = "LOG_RETENTION_DAYS"
+	envLogRetentionCleanupEnabled        = "LOG_RETENTION_CLEANUP_ENABLED"
+	envLogRetentionCleanupIntervalHours  = "LOG_RETENTION_CLEANUP_INTERVAL_HOURS"
+)
+
+// logCleanupHandler runs consume/history log cleanup.
+// - On-demand: StartLogCleanupTask / admin UI (explicit target_timestamp).
+// - Scheduled (why-master): purge rows older than LOG_RETENTION_DAYS (default 90).
 type logCleanupHandler struct{}
 
 func (logCleanupHandler) Type() string { return model.SystemTaskTypeLogCleanup }
 
+func (logCleanupHandler) Enabled() bool {
+	// Default on for why-master; set LOG_RETENTION_CLEANUP_ENABLED=false to disable.
+	return common.GetEnvOrDefaultBool(envLogRetentionCleanupEnabled, true)
+}
+
+func (logCleanupHandler) Interval() time.Duration {
+	hours := common.GetEnvOrDefault(envLogRetentionCleanupIntervalHours, defaultLogRetentionCleanupIntervalH)
+	if hours < 1 {
+		hours = defaultLogRetentionCleanupIntervalH
+	}
+	return time.Duration(hours) * time.Hour
+}
+
+func (logCleanupHandler) NewPayload() any {
+	return LogCleanupPayload{
+		TargetTimestamp: logRetentionCutoffUnix(time.Now()),
+		BatchSize:       logCleanupBatchSize,
+	}
+}
+
 func (logCleanupHandler) Run(ctx context.Context, task *model.SystemTask, runnerID string) {
 	runLogCleanupTask(ctx, task, runnerID)
+}
+
+// logRetentionDays returns how many days of logs to keep (minimum 1).
+func logRetentionDays() int {
+	days := common.GetEnvOrDefault(envLogRetentionDays, defaultLogRetentionDays)
+	if days < 1 {
+		return defaultLogRetentionDays
+	}
+	return days
+}
+
+// logRetentionCutoffUnix is the exclusive upper bound for deletion:
+// logs with created_at < cutoff are removed (i.e. keep the last N days).
+func logRetentionCutoffUnix(now time.Time) int64 {
+	return now.AddDate(0, 0, -logRetentionDays()).Unix()
 }
 
 func init() {

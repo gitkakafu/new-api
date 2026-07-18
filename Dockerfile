@@ -4,6 +4,8 @@ WORKDIR /build/web
 COPY web/package.json web/bun.lock ./
 COPY web/default/package.json ./default/package.json
 COPY web/classic/package.json ./classic/package.json
+# why-master: cap bun heap on small VPS builders (e.g. 2G)
+ENV NODE_OPTIONS=--max-old-space-size=1536
 RUN bun install --frozen-lockfile
 COPY ./web/default ./default
 COPY ./VERSION /build/VERSION
@@ -15,6 +17,8 @@ WORKDIR /build/web
 COPY web/package.json web/bun.lock ./
 COPY web/default/package.json ./default/package.json
 COPY web/classic/package.json ./classic/package.json
+# why-master: cap bun heap on small VPS builders (e.g. 2G)
+ENV NODE_OPTIONS=--max-old-space-size=1536
 RUN bun install --filter ./classic --frozen-lockfile
 COPY ./web/classic ./classic
 COPY ./VERSION /build/VERSION
@@ -36,7 +40,8 @@ RUN go mod download
 COPY . .
 COPY --from=builder /build/web/default/dist ./web/default/dist
 COPY --from=builder-classic /build/web/classic/dist ./web/classic/dist
-RUN go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$(cat VERSION)'" -o new-api
+# why-master: limit go build parallelism/memory on small VPS
+RUN GOMAXPROCS=1 GOMEMLIMIT=1400MiB go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$(cat VERSION)'" -o new-api
 
 FROM debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a
 

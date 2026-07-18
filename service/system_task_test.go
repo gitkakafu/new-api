@@ -107,6 +107,41 @@ func TestSystemTaskSchedulerSkipsDisabled(t *testing.T) {
 	assert.Equal(t, int64(0), countSystemTasks(t, handler.taskType))
 }
 
+func TestLogRetentionCutoffDefault90Days(t *testing.T) {
+	t.Setenv(envLogRetentionDays, "")
+	t.Setenv(envLogRetentionCleanupEnabled, "")
+	t.Setenv(envLogRetentionCleanupIntervalHours, "")
+
+	assert.Equal(t, defaultLogRetentionDays, logRetentionDays())
+	assert.True(t, logCleanupHandler{}.Enabled())
+	assert.Equal(t, 24*time.Hour, logCleanupHandler{}.Interval())
+
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	got := logRetentionCutoffUnix(now)
+	want := now.AddDate(0, 0, -90).Unix()
+	assert.Equal(t, want, got)
+
+	payload, ok := logCleanupHandler{}.NewPayload().(LogCleanupPayload)
+	require.True(t, ok)
+	assert.Equal(t, logCleanupBatchSize, payload.BatchSize)
+	// Payload cutoff is "now - retention"; allow 2s skew around test execution.
+	assert.InDelta(t, float64(logRetentionCutoffUnix(time.Now())), float64(payload.TargetTimestamp), 2)
+}
+
+func TestLogRetentionDaysEnvOverride(t *testing.T) {
+	t.Setenv(envLogRetentionDays, "30")
+	assert.Equal(t, 30, logRetentionDays())
+
+	t.Setenv(envLogRetentionDays, "0")
+	assert.Equal(t, defaultLogRetentionDays, logRetentionDays())
+
+	t.Setenv(envLogRetentionCleanupEnabled, "false")
+	assert.False(t, logCleanupHandler{}.Enabled())
+
+	t.Setenv(envLogRetentionCleanupIntervalHours, "12")
+	assert.Equal(t, 12*time.Hour, logCleanupHandler{}.Interval())
+}
+
 func TestSystemTaskClaimPassDispatchesByType(t *testing.T) {
 	truncate(t)
 
