@@ -5174,6 +5174,14 @@
     "Only @{{domain}} email is allowed for registration": "Only @{{domain}} email is allowed for registration",
     "Only these email domains are allowed: {{domains}}": "Only these email domains are allowed: {{domains}}",
     "name@qq.com": "name@qq.com",
-    "name@{{domain}}": "name@{{domain}}"
+    "name@{{domain}}": "name@{{domain}}",
+    "Purchase redemption code": "Purchase redemption code",
+    "Buy redemption code": "Buy redemption code",
+    "QQ Group": "QQ Group",
+    "Join QQ Group": "Join QQ Group",
+    "Recharge & Support": "Recharge & Support",
+    "Recharge URL": "Recharge URL",
+    "Purchase redemption codes from the official shop, then redeem them in Wallet.": "Purchase redemption codes from the official shop, then redeem them in Wallet.",
+    "Buy a code in the shop, then redeem it below. Contact support via QQ group if needed.": "Buy a code in the shop, then redeem it below. Contact support via QQ group if needed."
   }
 }

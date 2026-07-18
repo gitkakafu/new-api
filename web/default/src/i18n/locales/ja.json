@@ -5174,6 +5174,14 @@
     "Only @{{domain}} email is allowed for registration": "登録は @{{domain}} メールのみ利用できます",
     "Only these email domains are allowed: {{domains}}": "登録できるメールドメイン：{{domains}}",
     "name@qq.com": "name@qq.com",
-    "name@{{domain}}": "name@{{domain}}"
+    "name@{{domain}}": "name@{{domain}}",
+    "Purchase redemption code": "引き換えコードを購入",
+    "Buy redemption code": "引き換えコードを購入",
+    "QQ Group": "QQグループ",
+    "Join QQ Group": "QQグループに参加",
+    "Recharge & Support": "チャージとサポート",
+    "Recharge URL": "チャージURL",
+    "Purchase redemption codes from the official shop, then redeem them in Wallet.": "公式ショップで引き換えコードを購入し、ウォレットで交換してください。",
+    "Buy a code in the shop, then redeem it below. Contact support via QQ group if needed.": "ショップでコードを購入し、下で交換してください。サポートはQQグループへ。"
   }
 }

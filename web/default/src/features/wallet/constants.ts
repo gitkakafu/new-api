@@ -64,3 +64,16 @@ export const DEFAULT_DISCOUNT_RATE = 1.0
  * Default minimum topup amount
  */
 export const DEFAULT_MIN_TOPUP = 1
+
+/**
+ * Official shop for purchasing redemption codes (蓝点小铺).
+ * Shown in wallet even when online payment gateways are disabled.
+ */
+export const REDEMPTION_SHOP_URL = 'https://pay.ldxp.cn/shop/MX9C4B03'
+
+/**
+ * Customer support QQ group number
+ */
+export const SUPPORT_QQ_GROUP = '949531417'
+
+export const SUPPORT_QQ_GROUP_URL = `https://qm.qq.com/q/${SUPPORT_QQ_GROUP}`

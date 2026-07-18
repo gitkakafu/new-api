@@ -5174,6 +5174,14 @@
     "Only @{{domain}} email is allowed for registration": "Chỉ cho phép đăng ký bằng email @{{domain}}",
     "Only these email domains are allowed: {{domains}}": "Chỉ cho phép các tên miền email: {{domains}}",
     "name@qq.com": "name@qq.com",
-    "name@{{domain}}": "name@{{domain}}"
+    "name@{{domain}}": "name@{{domain}}",
+    "Purchase redemption code": "Mua mã đổi",
+    "Buy redemption code": "Mua mã đổi",
+    "QQ Group": "Nhóm QQ",
+    "Join QQ Group": "Tham gia nhóm QQ",
+    "Recharge & Support": "Nạp tiền & hỗ trợ",
+    "Recharge URL": "Địa chỉ nạp tiền",
+    "Purchase redemption codes from the official shop, then redeem them in Wallet.": "Mua mã tại cửa hàng chính thức, rồi đổi trong Ví.",
+    "Buy a code in the shop, then redeem it below. Contact support via QQ group if needed.": "Mua mã tại cửa hàng rồi đổi bên dưới. Hỗ trợ qua nhóm QQ."
   }
 }

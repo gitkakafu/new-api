@@ -17,15 +17,96 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { Construction } from 'lucide-react'
+import { Construction, ExternalLink, ShoppingCart, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { RichContent } from '@/components/rich-content'
+import { buttonVariants } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  REDEMPTION_SHOP_URL,
+  SUPPORT_QQ_GROUP,
+  SUPPORT_QQ_GROUP_URL,
+} from '@/features/wallet/constants'
 import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
+import { cn } from '@/lib/utils'
 
 import { getAboutContent } from './api'
+
+function SupportInfoCard() {
+  const { t } = useTranslation()
+
+  return (
+    <Card className='border-primary/20 bg-card/80 mx-auto w-full max-w-xl text-left shadow-sm'>
+      <CardHeader className='pb-3'>
+        <CardTitle className='text-lg'>{t('Recharge & Support')}</CardTitle>
+        <p className='text-muted-foreground text-sm'>
+          {t(
+            'Purchase redemption codes from the official shop, then redeem them in Wallet.'
+          )}
+        </p>
+      </CardHeader>
+      <CardContent className='space-y-4'>
+        <div className='space-y-1.5'>
+          <div className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
+            {t('Recharge URL')}
+          </div>
+          <a
+            href={REDEMPTION_SHOP_URL}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-primary inline-flex max-w-full items-center gap-1.5 break-all text-sm font-medium underline-offset-4 hover:underline'
+          >
+            {REDEMPTION_SHOP_URL}
+            <ExternalLink className='h-3.5 w-3.5 shrink-0' />
+          </a>
+        </div>
+        <div className='space-y-1.5'>
+          <div className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
+            {t('QQ Group')}
+          </div>
+          <a
+            href={SUPPORT_QQ_GROUP_URL}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-primary inline-flex items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline'
+          >
+            {SUPPORT_QQ_GROUP}
+            <ExternalLink className='h-3.5 w-3.5 shrink-0' />
+          </a>
+        </div>
+        <div className='flex flex-col gap-2 pt-1 sm:flex-row'>
+          <a
+            href={REDEMPTION_SHOP_URL}
+            target='_blank'
+            rel='noopener noreferrer'
+            className={cn(
+              buttonVariants({ variant: 'default', size: 'lg' }),
+              'h-10 gap-2 sm:flex-1'
+            )}
+          >
+            <ShoppingCart className='h-4 w-4' />
+            {t('Buy redemption code')}
+          </a>
+          <a
+            href={SUPPORT_QQ_GROUP_URL}
+            target='_blank'
+            rel='noopener noreferrer'
+            className={cn(
+              buttonVariants({ variant: 'outline', size: 'lg' }),
+              'h-10 gap-2 sm:flex-1'
+            )}
+          >
+            <Users className='h-4 w-4' />
+            {t('Join QQ Group')}
+          </a>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 function EmptyAboutState() {
   const { t } = useTranslation()
@@ -33,7 +114,7 @@ function EmptyAboutState() {
 
   return (
     <div className='flex min-h-[60vh] items-center justify-center p-8'>
-      <div className='max-w-2xl space-y-6 text-center'>
+      <div className='max-w-2xl space-y-8 text-center'>
         <div className='flex justify-center'>
           <Construction className='text-muted-foreground h-24 w-24' />
         </div>
@@ -45,6 +126,9 @@ function EmptyAboutState() {
             )}
           </p>
         </div>
+
+        <SupportInfoCard />
+
         <div className='space-y-4 text-sm'>
           <p>
             {t('New API Project Repository:')}{' '}
@@ -148,12 +232,17 @@ export function About() {
   if (isUrl) {
     return (
       <PublicLayout showMainContainer={false}>
-        <iframe
-          src={rawContent}
-          className='h-[calc(100vh-3.5rem)] w-full border-0'
-          title={t('About')}
-          sandbox='allow-forms allow-popups allow-popups-to-escape-sandbox allow-scripts'
-        />
+        <div className='flex h-[calc(100vh-3.5rem)] flex-col'>
+          <div className='border-b px-4 py-3'>
+            <SupportInfoCard />
+          </div>
+          <iframe
+            src={rawContent}
+            className='min-h-0 w-full flex-1 border-0'
+            title={t('About')}
+            sandbox='allow-forms allow-popups allow-popups-to-escape-sandbox allow-scripts'
+          />
+        </div>
       </PublicLayout>
     )
   }
@@ -161,19 +250,23 @@ export function About() {
   if (contentIsHtml) {
     return (
       <PublicLayout showMainContainer={false}>
-        <RichContent
-          mode='html'
-          htmlVariant='isolated'
-          content={rawContent}
-          className='prose-neutral dark:prose-invert max-w-none'
-        />
+        <div className='mx-auto max-w-4xl space-y-6 px-4 py-8'>
+          <SupportInfoCard />
+          <RichContent
+            mode='html'
+            htmlVariant='isolated'
+            content={rawContent}
+            className='prose-neutral dark:prose-invert max-w-none'
+          />
+        </div>
       </PublicLayout>
     )
   }
 
   return (
     <PublicLayout>
-      <div className='mx-auto max-w-6xl px-4 py-8'>
+      <div className='mx-auto max-w-6xl space-y-6 px-4 py-8'>
+        <SupportInfoCard />
         <RichContent
           mode='markdown'
           content={rawContent}

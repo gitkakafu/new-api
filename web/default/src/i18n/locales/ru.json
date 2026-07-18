@@ -5174,6 +5174,14 @@
     "Only @{{domain}} email is allowed for registration": "Для регистрации разрешена только почта @{{domain}}",
     "Only these email domains are allowed: {{domains}}": "Разрешённые домены почты: {{domains}}",
     "name@qq.com": "name@qq.com",
-    "name@{{domain}}": "name@{{domain}}"
+    "name@{{domain}}": "name@{{domain}}",
+    "Purchase redemption code": "Купить код",
+    "Buy redemption code": "Купить код",
+    "QQ Group": "Группа QQ",
+    "Join QQ Group": "Вступить в группу QQ",
+    "Recharge & Support": "Пополнение и поддержка",
+    "Recharge URL": "Ссылка на пополнение",
+    "Purchase redemption codes from the official shop, then redeem them in Wallet.": "Купите код в официальном магазине, затем активируйте его в кошельке.",
+    "Buy a code in the shop, then redeem it below. Contact support via QQ group if needed.": "Купите код в магазине и активируйте ниже. Поддержка — группа QQ."
   }
 }

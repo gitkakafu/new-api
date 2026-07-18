@@ -5174,6 +5174,14 @@
     "Only @{{domain}} email is allowed for registration": "註冊僅支援 @{{domain}} 信箱",
     "Only these email domains are allowed: {{domains}}": "註冊僅允許使用以下信箱網域：{{domains}}",
     "name@qq.com": "name@qq.com",
-    "name@{{domain}}": "name@{{domain}}"
+    "name@{{domain}}": "name@{{domain}}",
+    "Purchase redemption code": "購買兌換碼",
+    "Buy redemption code": "購買兌換碼",
+    "QQ Group": "QQ群",
+    "Join QQ Group": "加入QQ群",
+    "Recharge & Support": "儲值與支援",
+    "Recharge URL": "儲值地址",
+    "Purchase redemption codes from the official shop, then redeem them in Wallet.": "請先在官方店鋪購買兌換碼，再到錢包中兌換。",
+    "Buy a code in the shop, then redeem it below. Contact support via QQ group if needed.": "請先在店鋪購買兌換碼，然後在下方兌換。如需協助請加入QQ群。"
   }
 }
