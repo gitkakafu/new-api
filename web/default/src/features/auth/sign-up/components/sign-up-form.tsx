@@ -96,6 +96,55 @@ export function SignUpForm({
 
   const emailValue = form.watch('email')
   const emailVerificationRequired = !!status?.email_verification
+  const emailDomainRestrictionEnabled = Boolean(
+    status?.email_domain_restriction
+  )
+  const emailDomainWhitelist = useMemo(() => {
+    const raw =
+      status?.email_domain_whitelist ?? status?.data?.email_domain_whitelist
+    if (Array.isArray(raw)) {
+      return raw.map((d) => String(d).trim()).filter(Boolean)
+    }
+    if (typeof raw === 'string' && raw.trim()) {
+      return raw
+        .split(',')
+        .map((d) => d.trim())
+        .filter(Boolean)
+    }
+    return [] as string[]
+  }, [status])
+  const emailDomainHint = useMemo(() => {
+    if (!emailDomainRestrictionEnabled || emailDomainWhitelist.length === 0) {
+      return ''
+    }
+    if (
+      emailDomainWhitelist.length === 1 &&
+      emailDomainWhitelist[0].toLowerCase() === 'qq.com'
+    ) {
+      return t('Only QQ email (@qq.com) is allowed for registration')
+    }
+    if (emailDomainWhitelist.length === 1) {
+      return t('Only @{{domain}} email is allowed for registration', {
+        domain: emailDomainWhitelist[0],
+      })
+    }
+    return t('Only these email domains are allowed: {{domains}}', {
+      domains: emailDomainWhitelist.map((d) => `@${d}`).join(', '),
+    })
+  }, [emailDomainRestrictionEnabled, emailDomainWhitelist, t])
+  const emailPlaceholder = useMemo(() => {
+    if (
+      emailDomainRestrictionEnabled &&
+      emailDomainWhitelist.length === 1 &&
+      emailDomainWhitelist[0].toLowerCase() === 'qq.com'
+    ) {
+      return t('name@qq.com')
+    }
+    if (emailDomainRestrictionEnabled && emailDomainWhitelist.length === 1) {
+      return t('name@{{domain}}', { domain: emailDomainWhitelist[0] })
+    }
+    return t('name@example.com')
+  }, [emailDomainRestrictionEnabled, emailDomainWhitelist, t])
   const hasUserAgreement = Boolean(status?.user_agreement_enabled)
   const hasPrivacyPolicy = Boolean(status?.privacy_policy_enabled)
   const requiresLegalConsent = hasUserAgreement || hasPrivacyPolicy
@@ -292,11 +341,16 @@ export function SignUpForm({
                   </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder={t('name@example.com')}
+                      placeholder={emailPlaceholder}
                       type='email'
                       {...field}
                     />
                   </FormControl>
+                  {emailDomainHint ? (
+                    <p className='text-muted-foreground text-xs'>
+                      {emailDomainHint}
+                    </p>
+                  ) : null}
                   <FormMessage />
                 </FormItem>
               )}

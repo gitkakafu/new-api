@@ -54,6 +54,9 @@ func GetStatus(c *gin.Context) {
 		"version":                     common.Version,
 		"start_time":                  common.StartTime,
 		"email_verification":          common.EmailVerificationEnabled,
+		"email_domain_restriction":    common.EmailDomainRestrictionEnabled,
+		"email_domain_whitelist":      common.EmailDomainWhitelist,
+		"email_alias_restriction":     common.EmailAliasRestrictionEnabled,
 		"github_oauth":                common.GitHubOAuthEnabled,
 		"github_client_id":            common.GitHubClientId,
 		"discord_oauth":               system_setting.GetDiscordSettings().Enabled,
@@ -258,9 +261,18 @@ func SendEmailVerification(c *gin.Context) {
 			}
 		}
 		if !allowed {
+			allowedDomains := strings.Join(common.EmailDomainWhitelist, ", ")
+			if allowedDomains == "" {
+				allowedDomains = "(empty)"
+			}
+			// Prefer a short Chinese hint for the common single-domain case (e.g. qq.com only).
+			msg := fmt.Sprintf("当前仅允许使用以下邮箱域名注册：%s", allowedDomains)
+			if len(common.EmailDomainWhitelist) == 1 {
+				msg = fmt.Sprintf("当前仅允许使用 @%s 邮箱注册", common.EmailDomainWhitelist[0])
+			}
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "The administrator has enabled the email domain name whitelist, and your email address is not allowed due to special symbols or it's not in the whitelist.",
+				"message": msg,
 			})
 			return
 		}
