@@ -17,7 +17,7 @@ import (
 )
 
 func EmbeddingHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
-	info.InitChannelMeta(c)
+	helper.InitChannelMeta(c, info)
 
 	embeddingReq, ok := info.Request.(*dto.EmbeddingRequest)
 	if !ok {

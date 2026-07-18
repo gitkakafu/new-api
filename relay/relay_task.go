@@ -143,7 +143,7 @@ func ResolveOriginTask(c *gin.Context, info *relaycommon.RelayInfo) *dto.TaskErr
 // 构建/发送/解析上游请求 → 提交后计费调整(AdjustBillingOnSubmit)。
 // 控制器负责 defer Refund 和成功后 Settle。
 func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitResult, *dto.TaskError) {
-	info.InitChannelMeta(c)
+	helper.InitChannelMeta(c, info)
 
 	// 1. 确定 platform → 创建适配器 → 验证请求
 	platform := constant.TaskPlatform(c.GetString("platform"))

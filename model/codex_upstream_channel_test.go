@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
@@ -32,6 +33,7 @@ func ptrInt64(v int64) *int64    { return &v }
 
 func insertCodexChannel(t *testing.T, id int, name, tag, baseURL, group, models string, priority int64, status int) {
 	t.Helper()
+	weight := uint(100)
 	ch := &Channel{
 		Id:       id,
 		Type:     constant.ChannelTypeOpenAI,
@@ -43,7 +45,7 @@ func insertCodexChannel(t *testing.T, id int, name, tag, baseURL, group, models 
 		Group:    group,
 		Models:   models,
 		Priority: ptrInt64(priority),
-		Weight:   func() *uint { v := uint(100); return &v }(),
+		Weight:   &weight,
 	}
 	require.NoError(t, DB.Create(ch).Error)
 	// Abilities are normally added via channel.AddAbilities; create them directly for isolation.
@@ -62,17 +64,12 @@ func insertCodexChannel(t *testing.T, id int, name, tag, baseURL, group, models 
 	}
 }
 
-
 func splitCSV(s string) []string {
-	var out []string
-	start := 0
-	for i := 0; i <= len(s); i++ {
-		if i == len(s) || s[i] == ',' {
-			part := s[start:i]
-			if part != "" {
-				out = append(out, part)
-			}
-			start = i + 1
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p != "" {
+			out = append(out, p)
 		}
 	}
 	return out
@@ -87,7 +84,7 @@ func TestCodexGroupsPreferSub2APIThenFailoverToEflow(t *testing.T) {
 		modelName = "gpt-5.1"
 	)
 
-	// Higher priority sub2api, lower priority e-flow â€?both groups, same model.
+	// Higher priority sub2api, lower priority e-flow â€” both groups, same model.
 	insertCodexChannel(t, 1, "sub2api-primary", "sub2api", "http://sub2api:8080",
 		groupVIP+","+groupFree, modelName, 100, common.ChannelStatusEnabled)
 	insertCodexChannel(t, 2, "eflow-fallback", "eflow", "http://e-flowcode.cc",
@@ -136,8 +133,8 @@ func TestGptImage2OnlyOnSub2API(t *testing.T) {
 	resetCodexUpstreamTestTables(t)
 
 	const (
-		groupVIP  = "1_vip_codex"
-		groupFree = "2_free_codex"
+		groupVIP   = "1_vip_codex"
+		groupFree  = "2_free_codex"
 		imageModel = "gpt-image-2"
 		chatModel  = "gpt-5.1"
 	)

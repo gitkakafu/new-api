@@ -18,7 +18,7 @@ import (
 )
 
 func RerankHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
-	info.InitChannelMeta(c)
+	helper.InitChannelMeta(c, info)
 
 	rerankReq, ok := info.Request.(*dto.RerankRequest)
 	if !ok {

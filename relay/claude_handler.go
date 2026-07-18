@@ -23,7 +23,7 @@ import (
 
 func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
 
-	info.InitChannelMeta(c)
+	helper.InitChannelMeta(c, info)
 
 	claudeReq, ok := info.Request.(*dto.ClaudeRequest)
 

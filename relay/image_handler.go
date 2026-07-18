@@ -21,7 +21,7 @@ import (
 )
 
 func ImageHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
-	info.InitChannelMeta(c)
+	helper.InitChannelMeta(c, info)
 
 	imageReq, ok := info.Request.(*dto.ImageRequest)
 	if !ok {

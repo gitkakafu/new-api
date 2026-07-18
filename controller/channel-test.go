@@ -245,7 +245,7 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 	}
 
 	info.IsChannelTest = true
-	info.InitChannelMeta(c)
+	helper.InitChannelMeta(c, info)
 
 	err = attachTestBillingRequestInput(info, request)
 	if err != nil {
