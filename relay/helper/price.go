@@ -66,6 +66,25 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) types.
 		groupRatioInfo.GroupRatio = ratio_setting.GetGroupRatio(relayInfo.UsingGroup)
 	}
 
+	// Codex groups bill by the upstream that actually serves the request:
+	// sub2api → fixed 0.13; e-flow fallback → 1.10 × baseline synced ratio.
+	if ratio_setting.IsCodexDynamicRatioGroup(relayInfo.UsingGroup) && relayInfo.ChannelMeta != nil {
+		kind := ratio_setting.ClassifyUpstreamKind(
+			"",
+			"",
+			relayInfo.ChannelMeta.ChannelBaseUrl,
+		)
+		// Prefer name/tag from channel cache when base URL alone is ambiguous.
+		if ch, err := model.CacheGetChannel(relayInfo.ChannelMeta.ChannelId); err == nil && ch != nil {
+			kind = ratio_setting.ClassifyUpstreamKind(ch.GetTag(), ch.Name, ch.GetBaseURL())
+		}
+		groupRatioInfo.GroupRatio = ratio_setting.ResolveCodexGroupRatio(
+			relayInfo.UsingGroup,
+			groupRatioInfo.GroupRatio,
+			kind,
+		)
+	}
+
 	return groupRatioInfo
 }
 
