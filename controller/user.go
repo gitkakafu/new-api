@@ -1324,11 +1324,31 @@ func TopUp(c *gin.Context) {
 		logger.LogError(c, fmt.Sprintf("failed to redeem key %s for user %d: %s", req.Key, id, err.Error()))
 		return
 	}
+	// Ops DingTalk: someone used a redemption code (async; never block user response).
+	notifyRedemptionDingTalk(id, req.Key, quota)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
 		"data":    quota,
 	})
+}
+
+func notifyRedemptionDingTalk(userID int, key string, quota int) {
+	payload := service.RedemptionNotifyPayload{
+		UserID: userID,
+		Key:    key,
+		Quota:  quota,
+	}
+	if user, err := model.GetUserById(userID, false); err == nil && user != nil {
+		payload.Username = user.Username
+		payload.Email = user.Email
+		payload.DisplayName = user.DisplayName
+	}
+	if red, err := model.GetRedemptionByKey(key); err == nil && red != nil {
+		payload.RedemptionID = red.Id
+		payload.CodeName = red.Name
+	}
+	service.NotifyRedemptionSuccessAsync(payload)
 }
 
 type UpdateUserSettingRequest struct {

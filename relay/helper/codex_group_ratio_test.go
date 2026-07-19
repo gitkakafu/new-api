@@ -1,7 +1,6 @@
 package helper
 
 import (
-	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -188,11 +187,18 @@ func TestModelPrice_GptImage2FixedPerCall(t *testing.T) {
 	// Runtime price map is populated by InitRatioSettings (main loads this at boot).
 	ratio_setting.InitRatioSettings()
 
+	// ModelPrice is the list price before group ratio. At sub2api codex ratio
+	// 0.13 the effective per-call charge is ≈ $0.08 → list = 0.08/0.13.
+	wantList := 0.08 / 0.13
+
 	price, ok := ratio_setting.GetModelPrice("gpt-image-2", false)
 	require.True(t, ok, "gpt-image-2 must be on ModelPrice / use-price path")
-	require.True(t, math.Abs(price-0.08) < 1e-12, "price=%v want 0.08", price)
+	require.InDelta(t, wantList, price, 1e-12, "price=%v want list %v (effective 0.08 @ 0.13)", price, wantList)
 
 	// Default map must also list it (fresh process / reset).
 	defaults := ratio_setting.GetDefaultModelPriceMap()
-	require.InDelta(t, 0.08, defaults["gpt-image-2"], 1e-12)
+	require.InDelta(t, wantList, defaults["gpt-image-2"], 1e-12)
+
+	// Plaza / settle: list * group_ratio ≈ 0.08 when preferred upstream is sub2api.
+	require.InDelta(t, 0.08, wantList*ratio_setting.Sub2APICodexGroupRatio, 1e-12)
 }

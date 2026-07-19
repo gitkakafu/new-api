@@ -273,7 +273,9 @@ var defaultModelPrice = map[string]float64{
 	"suno_music":                     0.1,
 	"suno_lyrics":                    0.01,
 	"dall-e-3":                       0.04,
-	"gpt-image-2":                    0.08, // fixed per-call price; sub2api-only routing
+	// List price BEFORE group ratio. Effective user price at sub2api codex
+	// group ratio 0.13 is ≈ $0.08/call (0.08/0.13 ≈ 0.6153846154).
+	"gpt-image-2": 0.08 / 0.13,
 	"imagen-3.0-generate-002":        0.03,
 	"black-forest-labs/flux-1.1-pro": 0.04,
 	"gpt-4-gizmo-*":                  0.1,

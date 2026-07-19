@@ -24,6 +24,29 @@ COPY ./web/classic ./classic
 COPY ./VERSION /build/VERSION
 RUN cd classic && VITE_REACT_APP_VERSION=$(cat /build/VERSION) bun run build
 
+# why-master: max-level gzip + zstd siblings for static assets (Caddy precompressed / less on-the-fly work)
+FROM python:3.12-slim AS precompress-default
+COPY --from=builder /build/web/default/dist /dist
+COPY packaging/precompress_static.py /precompress_static.py
+RUN pip install --no-cache-dir zstandard==0.25.0 \
+    && python /precompress_static.py /dist --gzip-level 9 --zstd-level 22
+
+FROM python:3.12-slim AS precompress-classic
+COPY --from=builder-classic /build/web/classic/dist /dist
+COPY packaging/precompress_static.py /precompress_static.py
+RUN pip install --no-cache-dir zstandard==0.25.0 \
+    && python /precompress_static.py /dist --gzip-level 9 --zstd-level 22
+
+# Optional target: caddy-static — precompressed dist for edge file_server
+# MUST stay before the final runtime stage so `docker build -t new-api:local .`
+# still produces the app image (last stage wins).
+#   docker build --target caddy-static -t new-api-static:local .
+FROM alpine:3.21 AS caddy-static
+COPY --from=precompress-default /dist /srv/new-api/default
+COPY --from=precompress-classic /dist /srv/new-api/classic
+RUN printf 'new-api-static\n' > /srv/new-api/BUILD_ID \
+    && find /srv/new-api -type f | wc -l | tr -d ' ' > /srv/new-api/FILE_COUNT
+
 FROM golang:1.26.1-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 AS builder2
 ENV GO111MODULE=on CGO_ENABLED=0
 
@@ -38,12 +61,12 @@ ADD go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-COPY --from=builder /build/web/default/dist ./web/default/dist
-COPY --from=builder-classic /build/web/classic/dist ./web/classic/dist
+COPY --from=precompress-default /dist ./web/default/dist
+COPY --from=precompress-classic /dist ./web/classic/dist
 # why-master: limit go build parallelism/memory on small VPS
 RUN GOMAXPROCS=1 GOMEMLIMIT=1400MiB go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$(cat VERSION)'" -o new-api
 
-FROM debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a
+FROM debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a AS runtime
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates tzdata libasan8 wget \

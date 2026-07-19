@@ -53,3 +53,16 @@ func TestResolveCodexGroupRatio(t *testing.T) {
 		t.Fatalf("unknown upstream should keep baseline, got %v", got)
 	}
 }
+
+func TestResolveCodexDisplayGroupRatio(t *testing.T) {
+	// Plaza should show 0.13 when preferred upstream is sub2api, even if static baseline is 0.33.
+	got := ResolveCodexDisplayGroupRatio("1_vip_codex", 0.33, UpstreamKindSub2API)
+	if got != Sub2APICodexGroupRatio {
+		t.Fatalf("display sub2api=%v want %v", got, Sub2APICodexGroupRatio)
+	}
+	got = ResolveCodexDisplayGroupRatio("2_free_codex", 0.20, UpstreamKindEflow)
+	want := 0.20 * EflowFallbackGroupRatioMultiplier
+	if math.Abs(got-want) > 1e-12 {
+		t.Fatalf("display eflow=%v want %v", got, want)
+	}
+}

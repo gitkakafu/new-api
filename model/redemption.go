@@ -134,6 +134,20 @@ func GetRedemptionById(id int) (*Redemption, error) {
 	return &redemption, err
 }
 
+// GetRedemptionByKey loads a redemption row by its secret key (for post-redeem notify).
+func GetRedemptionByKey(key string) (*Redemption, error) {
+	if key == "" {
+		return nil, errors.New("key 为空")
+	}
+	keyCol := "`key`"
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+		keyCol = `"key"`
+	}
+	redemption := &Redemption{}
+	err := DB.Where(keyCol+" = ?", key).First(redemption).Error
+	return redemption, err
+}
+
 func Redeem(key string, userId int) (quota int, err error) {
 	if key == "" {
 		return 0, errors.New("未提供兑换码")

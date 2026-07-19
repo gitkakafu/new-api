@@ -236,6 +236,82 @@ func filterChannelsByRequestPathAndModel(channels []int, requestPath string, mod
 	return filtered
 }
 
+// PreferredCodexUpstreamKind returns the highest-priority enabled upstream kind
+// for a codex billing group, used by the model plaza display ratio.
+// Prefer any enabled sub2api channel over e-flow; if neither is present, Unknown.
+func PreferredCodexUpstreamKind(group string) ratio_setting.UpstreamKind {
+	group = strings.TrimSpace(group)
+	if !ratio_setting.IsCodexDynamicRatioGroup(group) {
+		return ratio_setting.UpstreamKindUnknown
+	}
+
+	channelSyncLock.RLock()
+	defer channelSyncLock.RUnlock()
+
+	var bestSub2, bestEflow *Channel
+	for _, ch := range channelsIDM {
+		if ch == nil || ch.Status != common.ChannelStatusEnabled {
+			continue
+		}
+		if !channelBelongsToGroup(ch, group) {
+			continue
+		}
+		kind := ratio_setting.ClassifyUpstreamKind(ch.GetTag(), ch.Name, ch.GetBaseURL())
+		switch kind {
+		case ratio_setting.UpstreamKindSub2API:
+			if bestSub2 == nil || ch.GetPriority() > bestSub2.GetPriority() {
+				bestSub2 = ch
+			}
+		case ratio_setting.UpstreamKindEflow:
+			if bestEflow == nil || ch.GetPriority() > bestEflow.GetPriority() {
+				bestEflow = ch
+			}
+		}
+	}
+	if bestSub2 != nil {
+		return ratio_setting.UpstreamKindSub2API
+	}
+	if bestEflow != nil {
+		return ratio_setting.UpstreamKindEflow
+	}
+	return ratio_setting.UpstreamKindUnknown
+}
+
+func channelBelongsToGroup(ch *Channel, group string) bool {
+	if ch == nil {
+		return false
+	}
+	for _, g := range strings.Split(ch.Group, ",") {
+		if strings.TrimSpace(g) == group {
+			return true
+		}
+	}
+	return false
+}
+
+// ResolveCodexDisplayGroupRatio resolves the UI-facing group ratio for one group.
+// Codex groups follow preferred upstream (sub2api 0.13 / e-flow baseline×1.10);
+// other groups keep baseline unchanged. Used by model plaza and token-group APIs.
+func ResolveCodexDisplayGroupRatio(group string, baseline float64) float64 {
+	if !ratio_setting.IsCodexDynamicRatioGroup(group) {
+		return baseline
+	}
+	kind := PreferredCodexUpstreamKind(group)
+	return ratio_setting.ResolveCodexDisplayGroupRatio(group, baseline, kind)
+}
+
+// ApplyCodexDisplayGroupRatios rewrites groupRatio entries for codex groups so
+// the pricing page and token-create group list show the effective ratio
+// (0.13 when sub2api is preferred).
+func ApplyCodexDisplayGroupRatios(groupRatio map[string]float64) {
+	if groupRatio == nil {
+		return
+	}
+	for g, baseline := range groupRatio {
+		groupRatio[g] = ResolveCodexDisplayGroupRatio(g, baseline)
+	}
+}
+
 func CacheGetChannel(id int) (*Channel, error) {
 	if !common.MemoryCacheEnabled {
 		return GetChannelById(id, true)
