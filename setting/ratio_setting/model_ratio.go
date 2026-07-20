@@ -273,9 +273,8 @@ var defaultModelPrice = map[string]float64{
 	"suno_music":                     0.1,
 	"suno_lyrics":                    0.01,
 	"dall-e-3":                       0.04,
-	// List price BEFORE group ratio. Keep the existing fixed list price while
-	// the sub2api Codex group ratio independently controls the effective charge.
-	"gpt-image-2": 0.6153846153846154,
+	// List price before group ratio: 1.25 * sub2api Codex ratio 0.04 = $0.05/call.
+	"gpt-image-2": 1.25,
 	"imagen-3.0-generate-002":        0.03,
 	"black-forest-labs/flux-1.1-pro": 0.04,
 	"gpt-4-gizmo-*":                  0.1,

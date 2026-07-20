@@ -33,7 +33,7 @@ func GetUserGroups(c *gin.Context) {
 		// UserUsableGroups contains the groups that the user can use
 		if desc, ok := userUsableGroups[groupName]; ok {
 			// Baseline (incl. user→group special ratio), then same display rewrite
-			// as /api/pricing so token create shows sub2api 0.07 / e-flow×1.10.
+			// as /api/pricing so token create shows sub2api 0.04 / e-flow×1.10.
 			baseline := service.GetUserGroupRatio(userGroup, groupName)
 			usableGroups[groupName] = map[string]interface{}{
 				"ratio": model.ResolveCodexDisplayGroupRatio(groupName, baseline),

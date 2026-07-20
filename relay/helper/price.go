@@ -67,7 +67,7 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) types.
 	}
 
 	// Codex groups bill by the upstream that actually serves the request:
-	// sub2api → fixed 0.07; e-flow fallback → 1.10 × baseline synced ratio.
+	// sub2api → fixed 0.04; e-flow fallback → 1.10 × baseline synced ratio.
 	// Requires ChannelMeta (set by InitChannelMeta after the selected channel is in gin context).
 	if ratio_setting.IsCodexDynamicRatioGroup(relayInfo.UsingGroup) && relayInfo.ChannelMeta != nil {
 		kind := ratio_setting.ClassifyUpstreamKind(
@@ -91,7 +91,7 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) types.
 
 // ApplyGroupRatioToPriceData re-resolves group ratio into PriceData after the
 // serving channel is known. ModelPriceHelper runs before ChannelMeta exists, so
-// codex dynamic ratio (0.07 / 1.10× e-flow) must be applied here before settle.
+// codex dynamic ratio (0.04 / 1.10× e-flow) must be applied here before settle.
 func ApplyGroupRatioToPriceData(c *gin.Context, info *relaycommon.RelayInfo) {
 	if info == nil {
 		return
