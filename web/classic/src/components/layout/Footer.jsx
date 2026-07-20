@@ -191,14 +191,12 @@ const FooterBar = () => {
         <div className='flex flex-col md:flex-row items-center justify-between w-full max-w-[1110px] gap-6'>
           <div className='flex flex-wrap items-center gap-2'>
             <Typography.Text className='text-sm !text-semi-color-text-1'>
-              © {currentYear} {systemName}. {t('版权所有')}
+              © {currentYear} New API. {t('版权所有。')}
             </Typography.Text>
           </div>
 
-          <div className='text-sm'>
-            <span className='!text-semi-color-text-1'>
-              {t('设计与开发由')}{' '}
-            </span>
+          <div className='text-sm !text-semi-color-text-1'>
+            © {currentYear}{' '}
             <a
               href='https://github.com/QuantumNous/new-api'
               target='_blank'
@@ -207,6 +205,7 @@ const FooterBar = () => {
             >
               New API
             </a>
+            . {t('版权所有，由项目贡献者设计与开发。')}
           </div>
         </div>
       </footer>
@@ -227,10 +226,8 @@ const FooterBar = () => {
               className='custom-footer na-cb6feafeb3990c78 text-sm !text-semi-color-text-1'
               dangerouslySetInnerHTML={{ __html: footer }}
             ></div>
-            <div className='text-sm flex-shrink-0'>
-              <span className='!text-semi-color-text-1'>
-                {t('设计与开发由')}{' '}
-              </span>
+            <div className='text-sm flex-shrink-0 !text-semi-color-text-1'>
+              © {currentYear}{' '}
               <a
                 href='https://github.com/QuantumNous/new-api'
                 target='_blank'
@@ -239,6 +236,7 @@ const FooterBar = () => {
               >
                 New API
               </a>
+              . {t('版权所有，由项目贡献者设计与开发。')}
             </div>
           </div>
         </footer>
