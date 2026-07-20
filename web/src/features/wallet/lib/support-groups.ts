@@ -46,11 +46,32 @@ function firstString(
   return ''
 }
 
+/**
+ * Build a clickable join URL for a QQ group setting value.
+ *
+ * - Full http(s) / mqq* URL: used as-is (admin may paste the official join link).
+ * - Pure group number (digits): QQ client deep link. Do NOT use
+ *   `https://qm.qq.com/q/<number>` — that path expects a short share key, not the
+ *   group number, and returns 404 (e.g. qm.qq.com/q/949531417).
+ * - Other non-empty text: treated as a qm.qq.com short share key.
+ */
 export function buildQqGroupUrl(qqGroup: string): string {
   const group = qqGroup.trim()
   if (!group) return ''
   if (/^https?:\/\//i.test(group)) return group
+  if (/^(mqqapi|mqq|mqqopensdkapi|tencent):\/\//i.test(group)) return group
+  // Numeric QQ group id → open group card in QQ client
+  if (/^\d{5,12}$/.test(group)) {
+    const uin = encodeURIComponent(group)
+    return `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${uin}&card_type=group&source=qrcode`
+  }
+  // Official short join key from “一键加群”
   return `https://qm.qq.com/q/${encodeURIComponent(group)}`
+}
+
+/** Whether the join URL is a custom protocol (must not open in a new tab). */
+export function isQqProtocolUrl(url: string): boolean {
+  return /^(mqqapi|mqq|mqqopensdkapi|tencent):\/\//i.test(url.trim())
 }
 
 /**

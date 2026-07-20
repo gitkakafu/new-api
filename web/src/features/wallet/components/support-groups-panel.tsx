@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils'
 
 import {
   hasAnySupportGroup,
+  isQqProtocolUrl,
   type SupportGroups,
 } from '../lib/support-groups'
 
@@ -69,6 +70,12 @@ export function SupportGroupsPanel({
   const { t } = useTranslation()
   const hasGroups = hasAnySupportGroup(groups)
   const hasQr = Boolean(groups.wechatQrCode || groups.douyinQrCode)
+  const qqIsProtocol = isQqProtocolUrl(groups.qqGroupUrl)
+  // Custom protocols (mqqapi://) must open in the same browsing context so the
+  // OS can hand off to the QQ client; target=_blank often fails to launch apps.
+  const qqLinkProps = qqIsProtocol
+    ? ({ rel: 'noopener noreferrer' } as const)
+    : ({ target: '_blank' as const, rel: 'noopener noreferrer' } as const)
 
   if (!showShop && !hasGroups) {
     return null
@@ -94,8 +101,7 @@ export function SupportGroupsPanel({
       {groups.qqGroup && groups.qqGroupUrl ? (
         <a
           href={groups.qqGroupUrl}
-          target='_blank'
-          rel='noopener noreferrer'
+          {...qqLinkProps}
           className={cn(
             buttonVariants({ variant: 'outline', size: 'lg' }),
             'h-10 gap-2 sm:flex-1'
@@ -153,8 +159,7 @@ export function SupportGroupsPanel({
             </div>
             <a
               href={groups.qqGroupUrl}
-              target='_blank'
-              rel='noopener noreferrer'
+              {...qqLinkProps}
               className='text-primary inline-flex items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline'
             >
               {groups.qqGroup}
@@ -183,8 +188,7 @@ export function SupportGroupsPanel({
           {groups.qqGroup && groups.qqGroupUrl ? (
             <a
               href={groups.qqGroupUrl}
-              target='_blank'
-              rel='noopener noreferrer'
+              {...qqLinkProps}
               className={cn(
                 buttonVariants({ variant: 'outline', size: 'lg' }),
                 'h-10 gap-2 sm:flex-1'

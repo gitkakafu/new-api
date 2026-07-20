@@ -77,4 +77,8 @@ export const REDEMPTION_SHOP_URL = 'https://pay.ldxp.cn/shop/MX9C4B03'
  */
 export const SUPPORT_QQ_GROUP = '949531417'
 
-export const SUPPORT_QQ_GROUP_URL = `https://qm.qq.com/q/${SUPPORT_QQ_GROUP}`
+/**
+ * Fallback join link for the default group number.
+ * Numeric group ids must use the mqqapi deep link; qm.qq.com/q/<number> is 404.
+ */
+export const SUPPORT_QQ_GROUP_URL = `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${SUPPORT_QQ_GROUP}&card_type=group&source=qrcode`

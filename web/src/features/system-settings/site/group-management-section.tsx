@@ -206,7 +206,7 @@ export function GroupManagementSection({
                       </FormControl>
                       <FormDescription>
                         {t(
-                          'Shown in Wallet and About when set. Leave empty to hide the QQ group entry.'
+                          'Shown in Wallet and About when set. Enter a numeric group id, or paste the full official join link (https://qm.qq.com/q/...). Leave empty to hide.'
                         )}
                       </FormDescription>
                       <FormMessage />
