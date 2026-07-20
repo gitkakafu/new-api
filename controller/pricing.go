@@ -64,7 +64,8 @@ func GetPricing(c *gin.Context) {
 		}
 	}
 
-	// Codex groups bill dynamically (sub2api 0.04 / e-flow baseline×1.10).
+	// Codex/Grok groups bill dynamically:
+	// Codex sub2api 0.04 / e-flow baseline×1.10; Grok sub2api 0.01 / e-flow baseline.
 	// Model plaza reads group_ratio for display — rewrite to the preferred upstream ratio.
 	model.ApplyCodexDisplayGroupRatios(groupRatio)
 

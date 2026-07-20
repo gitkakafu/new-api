@@ -237,11 +237,11 @@ func filterChannelsByRequestPathAndModel(channels []int, requestPath string, mod
 }
 
 // PreferredCodexUpstreamKind returns the highest-priority enabled upstream kind
-// for a codex billing group, used by the model plaza display ratio.
+// for a dynamic billing group (Codex or Grok), used by the model plaza display ratio.
 // Prefer any enabled sub2api channel over e-flow; if neither is present, Unknown.
 func PreferredCodexUpstreamKind(group string) ratio_setting.UpstreamKind {
 	group = strings.TrimSpace(group)
-	if !ratio_setting.IsCodexDynamicRatioGroup(group) {
+	if !ratio_setting.IsDynamicUpstreamRatioGroup(group) {
 		return ratio_setting.UpstreamKindUnknown
 	}
 
@@ -290,19 +290,20 @@ func channelBelongsToGroup(ch *Channel, group string) bool {
 }
 
 // ResolveCodexDisplayGroupRatio resolves the UI-facing group ratio for one group.
-// Codex groups follow preferred upstream (sub2api 0.04 / e-flow baseline×1.10);
-// other groups keep baseline unchanged. Used by model plaza and token-group APIs.
+// Codex: sub2api 0.04 / e-flow baseline×1.10.
+// Grok:  sub2api 0.01 / e-flow baseline (original).
+// Other groups keep baseline unchanged. Used by model plaza and token-group APIs.
 func ResolveCodexDisplayGroupRatio(group string, baseline float64) float64 {
-	if !ratio_setting.IsCodexDynamicRatioGroup(group) {
+	if !ratio_setting.IsDynamicUpstreamRatioGroup(group) {
 		return baseline
 	}
 	kind := PreferredCodexUpstreamKind(group)
 	return ratio_setting.ResolveCodexDisplayGroupRatio(group, baseline, kind)
 }
 
-// ApplyCodexDisplayGroupRatios rewrites groupRatio entries for codex groups so
+// ApplyCodexDisplayGroupRatios rewrites groupRatio entries for dynamic groups so
 // the pricing page and token-create group list show the effective ratio
-// (0.04 when sub2api is preferred).
+// (Codex 0.04 / Grok 0.01 when sub2api is preferred).
 func ApplyCodexDisplayGroupRatios(groupRatio map[string]float64) {
 	if groupRatio == nil {
 		return

@@ -66,10 +66,11 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) types.
 		groupRatioInfo.GroupRatio = ratio_setting.GetGroupRatio(relayInfo.UsingGroup)
 	}
 
-	// Codex groups bill by the upstream that actually serves the request:
-	// sub2api → fixed 0.04; e-flow fallback → 1.10 × baseline synced ratio.
+	// Codex/Grok groups bill by the upstream that actually serves the request:
+	// Codex: sub2api → 0.04; e-flow → 1.10 × baseline.
+	// Grok:  sub2api → 0.01; e-flow → baseline (original).
 	// Requires ChannelMeta (set by InitChannelMeta after the selected channel is in gin context).
-	if ratio_setting.IsCodexDynamicRatioGroup(relayInfo.UsingGroup) && relayInfo.ChannelMeta != nil {
+	if ratio_setting.IsDynamicUpstreamRatioGroup(relayInfo.UsingGroup) && relayInfo.ChannelMeta != nil {
 		kind := ratio_setting.ClassifyUpstreamKind(
 			"",
 			"",
@@ -79,7 +80,7 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) types.
 		if ch, err := model.CacheGetChannel(relayInfo.ChannelMeta.ChannelId); err == nil && ch != nil {
 			kind = ratio_setting.ClassifyUpstreamKind(ch.GetTag(), ch.Name, ch.GetBaseURL())
 		}
-		groupRatioInfo.GroupRatio = ratio_setting.ResolveCodexGroupRatio(
+		groupRatioInfo.GroupRatio = ratio_setting.ResolveDynamicGroupRatio(
 			relayInfo.UsingGroup,
 			groupRatioInfo.GroupRatio,
 			kind,
@@ -91,7 +92,8 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) types.
 
 // ApplyGroupRatioToPriceData re-resolves group ratio into PriceData after the
 // serving channel is known. ModelPriceHelper runs before ChannelMeta exists, so
-// codex dynamic ratio (0.04 / 1.10× e-flow) must be applied here before settle.
+// dynamic upstream ratio (Codex 0.04 / Grok 0.01 / e-flow baseline rules) must
+// be applied here before settle.
 func ApplyGroupRatioToPriceData(c *gin.Context, info *relaycommon.RelayInfo) {
 	if info == nil {
 		return
@@ -101,7 +103,7 @@ func ApplyGroupRatioToPriceData(c *gin.Context, info *relaycommon.RelayInfo) {
 
 // InitChannelMeta loads channel fields from gin context into RelayInfo and
 // refreshes PriceData.GroupRatioInfo so post-consume billing matches the upstream
-// that will actually serve the request (including codex dynamic ratio).
+// that will actually serve the request (including Codex/Grok dynamic ratio).
 func InitChannelMeta(c *gin.Context, info *relaycommon.RelayInfo) {
 	if info == nil {
 		return

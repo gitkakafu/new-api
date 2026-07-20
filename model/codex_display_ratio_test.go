@@ -56,3 +56,62 @@ func TestResolveCodexDisplayGroupRatio_SingleGroup(t *testing.T) {
 	// non-codex group unchanged
 	require.Equal(t, 0.22, ResolveCodexDisplayGroupRatio("1_vip_china", 0.22))
 }
+
+func TestApplyGrokDisplayGroupRatios_PrefersSub2API(t *testing.T) {
+	resetCodexUpstreamTestTables(t)
+
+	insertCodexChannel(t, 1, "sub2api-1_vip_grok", "sub2api", "http://sub2api:8080",
+		"1_vip_grok", "grok-4.5", 100, common.ChannelStatusEnabled)
+	insertCodexChannel(t, 2, "eflow-1_vip_grok", "eflow", "http://e-flowcode.cc",
+		"1_vip_grok", "grok-4.5", 50, common.ChannelStatusEnabled)
+	InitChannelCache()
+
+	ratios := map[string]float64{
+		"1_vip_grok":  0.40,
+		"1_vip_china": 0.22,
+	}
+	ApplyCodexDisplayGroupRatios(ratios)
+	require.Equal(t, ratio_setting.Sub2APIGrokGroupRatio, ratios["1_vip_grok"])
+	require.Equal(t, 0.22, ratios["1_vip_china"])
+}
+
+func TestApplyGrokDisplayGroupRatios_EflowKeepsBaseline(t *testing.T) {
+	resetCodexUpstreamTestTables(t)
+
+	insertCodexChannel(t, 1, "sub2api-1_vip_grok", "sub2api", "http://sub2api:8080",
+		"1_vip_grok", "grok-4.5", 100, common.ChannelStatusManuallyDisabled)
+	insertCodexChannel(t, 2, "eflow-1_vip_grok", "eflow", "http://e-flowcode.cc",
+		"1_vip_grok", "grok-4.5", 50, common.ChannelStatusEnabled)
+	InitChannelCache()
+
+	ratios := map[string]float64{"1_vip_grok": 0.40}
+	ApplyCodexDisplayGroupRatios(ratios)
+	// Grok e-flow keeps original baseline (no ×1.10).
+	require.InDelta(t, 0.40, ratios["1_vip_grok"], 1e-12)
+}
+
+func TestGrokGroupsPreferSub2APIThenFailoverToEflow(t *testing.T) {
+	resetCodexUpstreamTestTables(t)
+
+	const (
+		groupGrok = "1_vip_grok"
+		modelName = "grok-4.5"
+	)
+	insertCodexChannel(t, 1, "sub2api-1_vip_grok", "sub2api", "http://sub2api:8080",
+		groupGrok, modelName, 100, common.ChannelStatusEnabled)
+	insertCodexChannel(t, 2, "eflow-1_vip_grok", "eflow", "http://e-flowcode.cc",
+		groupGrok, modelName, 50, common.ChannelStatusEnabled)
+	InitChannelCache()
+
+	ch, err := GetRandomSatisfiedChannel(groupGrok, modelName, 0, "")
+	require.NoError(t, err)
+	require.NotNil(t, ch)
+	require.Equal(t, 1, ch.Id)
+	require.Equal(t, "sub2api", *ch.Tag)
+
+	ch2, err := GetRandomSatisfiedChannel(groupGrok, modelName, 1, "")
+	require.NoError(t, err)
+	require.NotNil(t, ch2)
+	require.Equal(t, 2, ch2.Id)
+	require.Equal(t, "eflow", *ch2.Tag)
+}

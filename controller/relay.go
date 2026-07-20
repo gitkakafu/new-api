@@ -314,7 +314,7 @@ func getChannel(c *gin.Context, info *relaycommon.RelayInfo, retryParam *service
 	}
 
 	// Setup gin context for the newly selected channel first, then refresh
-	// ChannelMeta + PriceData.GroupRatioInfo so codex dynamic ratio matches
+	// ChannelMeta + PriceData.GroupRatioInfo so Codex/Grok dynamic ratio matches
 	// this attempt's upstream (not the previous failed channel).
 	newAPIError := middleware.SetupContextForSelectedChannel(c, channel, info.OriginModelName)
 	if newAPIError != nil {

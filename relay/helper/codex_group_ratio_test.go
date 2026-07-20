@@ -22,9 +22,9 @@ func TestHandleGroupRatio_CodexDynamicByUpstream(t *testing.T) {
 	common.MemoryCacheEnabled = true
 	t.Cleanup(func() { common.MemoryCacheEnabled = origCache })
 
-	// Seed group baseline ratios used when falling back to e-flow (1.10 × baseline).
+	// Seed group baseline ratios used when falling back to e-flow.
 	require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(
-		`{"1_vip_codex":0.20,"2_free_codex":0.50,"default":1}`,
+		`{"1_vip_codex":0.20,"2_free_codex":0.50,"1_vip_grok":0.40,"default":1}`,
 	))
 	t.Cleanup(func() {
 		_ = ratio_setting.UpdateGroupRatioByJSONString(`{"default":1}`)
@@ -41,6 +41,8 @@ func TestHandleGroupRatio_CodexDynamicByUpstream(t *testing.T) {
 		{"vip_eflow", "1_vip_codex", "http://e-flowcode.cc", 0.20 * ratio_setting.EflowFallbackGroupRatioMultiplier},
 		{"free_sub2api", "2_free_codex", "http://sub2api:8080", ratio_setting.Sub2APICodexGroupRatio},
 		{"free_eflow", "2_free_codex", "http://e-flowcode.cc", 0.50 * ratio_setting.EflowFallbackGroupRatioMultiplier},
+		{"grok_sub2api", "1_vip_grok", "http://sub2api:8080", ratio_setting.Sub2APIGrokGroupRatio},
+		{"grok_eflow", "1_vip_grok", "http://e-flowcode.cc", 0.40}, // original baseline, no ×1.10
 	}
 
 	for _, tc := range cases {
@@ -75,7 +77,7 @@ func TestPriceDataGroupRatio_AfterInitChannelMeta(t *testing.T) {
 	t.Cleanup(func() { common.MemoryCacheEnabled = origCache })
 
 	require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(
-		`{"1_vip_codex":0.20,"2_free_codex":0.50,"default":1}`,
+		`{"1_vip_codex":0.20,"2_free_codex":0.50,"1_vip_grok":0.40,"default":1}`,
 	))
 	t.Cleanup(func() {
 		_ = ratio_setting.UpdateGroupRatioByJSONString(`{"default":1}`)
@@ -92,6 +94,8 @@ func TestPriceDataGroupRatio_AfterInitChannelMeta(t *testing.T) {
 		{"vip_eflow", "1_vip_codex", "http://e-flowcode.cc", 502, 0.20 * ratio_setting.EflowFallbackGroupRatioMultiplier},
 		{"free_sub2api", "2_free_codex", "http://sub2api:8080", 503, ratio_setting.Sub2APICodexGroupRatio},
 		{"free_eflow", "2_free_codex", "http://e-flowcode.cc", 504, 0.50 * ratio_setting.EflowFallbackGroupRatioMultiplier},
+		{"grok_sub2api", "1_vip_grok", "http://sub2api:8080", 505, ratio_setting.Sub2APIGrokGroupRatio},
+		{"grok_eflow", "1_vip_grok", "http://e-flowcode.cc", 506, 0.40},
 	}
 
 	for _, tc := range cases {

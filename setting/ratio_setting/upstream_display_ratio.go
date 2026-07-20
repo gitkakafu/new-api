@@ -1,17 +1,22 @@
 package ratio_setting
 
 // PreferredUpstreamKindForDisplay is a lightweight hint for UI (model plaza).
-// Real billing still uses ResolveCodexGroupRatio with the channel that served the request.
+// Real billing still uses ResolveDynamicGroupRatio with the channel that served the request.
 type PreferredUpstreamKindForDisplay = UpstreamKind
 
 // ResolveCodexDisplayGroupRatio picks the group ratio shown on the pricing page.
+// Kept name for compatibility; handles both Codex and Grok dynamic groups.
 //
-// When the preferred (highest-priority enabled) upstream for a codex group is sub2api,
-// show the sub2api fixed ratio (0.04). When only e-flow remains, show baseline * 1.10.
-// When preferred kind is unknown, keep baseline so operators still see the configured ratio.
+// When the preferred (highest-priority enabled) upstream is sub2api:
+//   - Codex → 0.04
+//   - Grok  → 0.01
+// When only e-flow remains:
+//   - Codex → baseline * 1.10
+//   - Grok  → baseline (original billing)
+// When preferred kind is unknown, keep baseline.
 func ResolveCodexDisplayGroupRatio(usingGroup string, baseline float64, preferredKind UpstreamKind) float64 {
-	if !IsCodexDynamicRatioGroup(usingGroup) {
+	if !IsDynamicUpstreamRatioGroup(usingGroup) {
 		return baseline
 	}
-	return ResolveCodexGroupRatio(usingGroup, baseline, preferredKind)
+	return ResolveDynamicGroupRatio(usingGroup, baseline, preferredKind)
 }
