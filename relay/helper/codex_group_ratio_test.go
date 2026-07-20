@@ -187,8 +187,8 @@ func TestModelPrice_GptImage2FixedPerCall(t *testing.T) {
 	// Runtime price map is populated by InitRatioSettings (main loads this at boot).
 	ratio_setting.InitRatioSettings()
 
-	// ModelPrice is the list price before group ratio: 1.25 * 0.04 = $0.05/call.
-	wantList := 0.05 / 0.04
+	// ModelPrice is the list price before group ratio: 1.0 * 0.04 = $0.04/call.
+	wantList := 0.04 / 0.04
 
 	price, ok := ratio_setting.GetModelPrice("gpt-image-2", false)
 	require.True(t, ok, "gpt-image-2 must be on ModelPrice / use-price path")
@@ -198,6 +198,6 @@ func TestModelPrice_GptImage2FixedPerCall(t *testing.T) {
 	defaults := ratio_setting.GetDefaultModelPriceMap()
 	require.InDelta(t, wantList, defaults["gpt-image-2"], 1e-12)
 
-	// Plaza / settle charges exactly $0.05 when sub2api serves the request.
-	require.InDelta(t, 0.05, wantList*ratio_setting.Sub2APICodexGroupRatio, 1e-12)
+	// Plaza / settle charges exactly $0.04 when sub2api serves the request.
+	require.InDelta(t, 0.04, wantList*ratio_setting.Sub2APICodexGroupRatio, 1e-12)
 }
