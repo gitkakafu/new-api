@@ -2,37 +2,16 @@ FROM oven/bun:1@sha256:0733e50325078969732ebe3b15ce4c4be5082f18c4ac1a0f0ca4839c2
 
 WORKDIR /build/web
 COPY web/package.json web/bun.lock ./
-COPY web/default/package.json ./default/package.json
-COPY web/classic/package.json ./classic/package.json
 # why-master: cap bun heap on small VPS builders (e.g. 2G)
 ENV NODE_OPTIONS=--max-old-space-size=1536
 RUN bun install --frozen-lockfile
-COPY ./web/default ./default
+COPY ./web ./
 COPY ./VERSION /build/VERSION
-RUN cd default && DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(cat /build/VERSION) bun run build
+RUN DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(cat /build/VERSION) bun run build
 
-FROM oven/bun:1@sha256:0733e50325078969732ebe3b15ce4c4be5082f18c4ac1a0f0ca4839c2e4e42a7 AS builder-classic
-
-WORKDIR /build/web
-COPY web/package.json web/bun.lock ./
-COPY web/default/package.json ./default/package.json
-COPY web/classic/package.json ./classic/package.json
-# why-master: cap bun heap on small VPS builders (e.g. 2G)
-ENV NODE_OPTIONS=--max-old-space-size=1536
-RUN bun install --filter ./classic --frozen-lockfile
-COPY ./web/classic ./classic
-COPY ./VERSION /build/VERSION
-RUN cd classic && VITE_REACT_APP_VERSION=$(cat /build/VERSION) bun run build
-
-# why-master: max-level gzip + zstd siblings for static assets (Caddy precompressed / less on-the-fly work)
-FROM python:3.12-slim AS precompress-default
-COPY --from=builder /build/web/default/dist /dist
-COPY packaging/precompress_static.py /precompress_static.py
-RUN pip install --no-cache-dir zstandard==0.25.0 \
-    && python /precompress_static.py /dist --gzip-level 9 --zstd-level 22
-
-FROM python:3.12-slim AS precompress-classic
-COPY --from=builder-classic /build/web/classic/dist /dist
+# why-master: max-level gzip + zstd siblings for static assets (Caddy precompressed)
+FROM python:3.12-slim AS precompress
+COPY --from=builder /build/web/dist /dist
 COPY packaging/precompress_static.py /precompress_static.py
 RUN pip install --no-cache-dir zstandard==0.25.0 \
     && python /precompress_static.py /dist --gzip-level 9 --zstd-level 22
@@ -42,8 +21,9 @@ RUN pip install --no-cache-dir zstandard==0.25.0 \
 # still produces the app image (last stage wins).
 #   docker build --target caddy-static -t new-api-static:local .
 FROM alpine:3.21 AS caddy-static
-COPY --from=precompress-default /dist /srv/new-api/default
-COPY --from=precompress-classic /dist /srv/new-api/classic
+COPY --from=precompress /dist /srv/new-api/default
+# Keep classic path as a copy for Caddyfile fallback during transition
+COPY --from=precompress /dist /srv/new-api/classic
 RUN printf 'new-api-static\n' > /srv/new-api/BUILD_ID \
     && find /srv/new-api -type f | wc -l | tr -d ' ' > /srv/new-api/FILE_COUNT
 
@@ -61,8 +41,7 @@ ADD go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-COPY --from=precompress-default /dist ./web/default/dist
-COPY --from=precompress-classic /dist ./web/classic/dist
+COPY --from=precompress /dist ./web/dist
 # why-master: limit go build parallelism/memory on small VPS
 RUN GOMAXPROCS=1 GOMEMLIMIT=1400MiB go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$(cat VERSION)'" -o new-api
 
