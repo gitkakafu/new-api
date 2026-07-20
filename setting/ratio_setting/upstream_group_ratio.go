@@ -8,7 +8,7 @@ const (
 	GroupFreeCodex = "2_free_codex"
 
 	// Sub2APICodexGroupRatio is the effective group ratio when traffic is served by sub2api.
-	Sub2APICodexGroupRatio = 0.13
+	Sub2APICodexGroupRatio = 0.07
 
 	// EflowFallbackGroupRatioMultiplier is applied to the baseline (synced) group
 	// ratio when traffic falls back to e-flowcode.cc for codex groups.
@@ -60,7 +60,7 @@ func ClassifyUpstreamKind(tag, name, baseURL string) UpstreamKind {
 // ResolveCodexGroupRatio returns the effective group ratio for codex groups
 // based on which upstream actually serves the request.
 //
-// - sub2api: fixed 0.13
+// - sub2api: fixed 0.07
 // - e-flow fallback: baseline * 1.10 (baseline is the pre-existing GroupRatio sync value)
 // - unknown: baseline unchanged
 //

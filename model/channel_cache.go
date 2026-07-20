@@ -290,7 +290,7 @@ func channelBelongsToGroup(ch *Channel, group string) bool {
 }
 
 // ResolveCodexDisplayGroupRatio resolves the UI-facing group ratio for one group.
-// Codex groups follow preferred upstream (sub2api 0.13 / e-flow baseline×1.10);
+// Codex groups follow preferred upstream (sub2api 0.07 / e-flow baseline×1.10);
 // other groups keep baseline unchanged. Used by model plaza and token-group APIs.
 func ResolveCodexDisplayGroupRatio(group string, baseline float64) float64 {
 	if !ratio_setting.IsCodexDynamicRatioGroup(group) {
@@ -302,7 +302,7 @@ func ResolveCodexDisplayGroupRatio(group string, baseline float64) float64 {
 
 // ApplyCodexDisplayGroupRatios rewrites groupRatio entries for codex groups so
 // the pricing page and token-create group list show the effective ratio
-// (0.13 when sub2api is preferred).
+// (0.07 when sub2api is preferred).
 func ApplyCodexDisplayGroupRatios(groupRatio map[string]float64) {
 	if groupRatio == nil {
 		return

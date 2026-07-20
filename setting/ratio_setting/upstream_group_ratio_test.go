@@ -55,7 +55,7 @@ func TestResolveCodexGroupRatio(t *testing.T) {
 }
 
 func TestResolveCodexDisplayGroupRatio(t *testing.T) {
-	// Plaza should show 0.13 when preferred upstream is sub2api, even if static baseline is 0.33.
+	// Plaza should show 0.07 when preferred upstream is sub2api, even if static baseline is 0.33.
 	got := ResolveCodexDisplayGroupRatio("1_vip_codex", 0.33, UpstreamKindSub2API)
 	if got != Sub2APICodexGroupRatio {
 		t.Fatalf("display sub2api=%v want %v", got, Sub2APICodexGroupRatio)

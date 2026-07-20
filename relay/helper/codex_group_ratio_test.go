@@ -179,7 +179,7 @@ func TestPriceDataGroupRatio_RetrySwitchesUpstream(t *testing.T) {
 	InitChannelMeta(c, info)
 	wantEflow := 0.20 * ratio_setting.EflowFallbackGroupRatioMultiplier
 	require.InDelta(t, wantEflow, info.PriceData.GroupRatioInfo.GroupRatio, 1e-12,
-		"retry must bill e-flow 1.10× baseline, not keep prior sub2api 0.13")
+		"retry must bill e-flow 1.10× baseline, not keep prior sub2api 0.07")
 	require.Equal(t, "http://e-flowcode.cc", info.ChannelMeta.ChannelBaseUrl)
 }
 
@@ -187,18 +187,17 @@ func TestModelPrice_GptImage2FixedPerCall(t *testing.T) {
 	// Runtime price map is populated by InitRatioSettings (main loads this at boot).
 	ratio_setting.InitRatioSettings()
 
-	// ModelPrice is the list price before group ratio. At sub2api codex ratio
-	// 0.13 the effective per-call charge is ≈ $0.08 → list = 0.08/0.13.
-	wantList := 0.08 / 0.13
+	// ModelPrice is the fixed list price before the independently selected group ratio.
+	wantList := 0.6153846153846154
 
 	price, ok := ratio_setting.GetModelPrice("gpt-image-2", false)
 	require.True(t, ok, "gpt-image-2 must be on ModelPrice / use-price path")
-	require.InDelta(t, wantList, price, 1e-12, "price=%v want list %v (effective 0.08 @ 0.13)", price, wantList)
+	require.InDelta(t, wantList, price, 1e-12, "price=%v want fixed list %v", price, wantList)
 
 	// Default map must also list it (fresh process / reset).
 	defaults := ratio_setting.GetDefaultModelPriceMap()
 	require.InDelta(t, wantList, defaults["gpt-image-2"], 1e-12)
 
-	// Plaza / settle: list * group_ratio ≈ 0.08 when preferred upstream is sub2api.
-	require.InDelta(t, 0.08, wantList*ratio_setting.Sub2APICodexGroupRatio, 1e-12)
+	// Plaza / settle applies the new sub2api ratio without changing the list price.
+	require.InDelta(t, wantList*0.07, wantList*ratio_setting.Sub2APICodexGroupRatio, 1e-12)
 }
