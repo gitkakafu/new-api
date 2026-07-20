@@ -37,6 +37,9 @@ const defaultSiteSettings: SiteSettings = {
   'legal.privacy_policy': '',
   HeaderNavModules: '',
   SidebarModulesAdmin: '',
+  SupportQQGroup: '949531417',
+  SupportWeChatGroupQRCode: '',
+  SupportDouyinGroupQRCode: '',
 }
 
 export function SiteSettings() {

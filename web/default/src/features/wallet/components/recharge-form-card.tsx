@@ -18,18 +18,15 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import {
   Gift,
-  ExternalLink,
   Loader2,
   Receipt,
-  ShoppingCart,
-  Users,
   WalletCards,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Input } from '@/components/ui/input'
@@ -42,14 +39,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useStatus } from '@/hooks/use-status'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-import {
-  REDEMPTION_SHOP_URL,
-  SUPPORT_QQ_GROUP,
-  SUPPORT_QQ_GROUP_URL,
-} from '../constants'
 import {
   formatCurrency,
   getDiscountLabel,
@@ -57,6 +50,7 @@ import {
   getMinTopupAmount,
   calculatePresetPricing,
 } from '../lib'
+import { resolveSupportGroups } from '../lib/support-groups'
 import type {
   PaymentMethod,
   PresetAmount,
@@ -65,6 +59,7 @@ import type {
   WaffoPayMethod,
 } from '../types'
 import { CreemProductsSection } from './creem-products-section'
+import { SupportGroupsPanel } from './support-groups-panel'
 
 interface RechargeFormCardProps {
   topupInfo: TopupInfo | null
@@ -126,6 +121,10 @@ export function RechargeFormCard({
   enableWaffoPancakeTopup,
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const supportGroups = resolveSupportGroups(
+    (status as Record<string, unknown> | null) ?? null
+  )
   const [localAmount, setLocalAmount] = useState(topupAmount.toString())
 
   useEffect(() => {
@@ -152,7 +151,11 @@ export function RechargeFormCard({
     Array.isArray(waffoPayMethods) && waffoPayMethods.length > 0
   const minTopup = getMinTopupAmount(topupInfo)
   const redemptionEnabled = topupInfo?.enable_redemption !== false
-  const shopUrl = (topupLink && topupLink.trim()) || REDEMPTION_SHOP_URL
+  const supportGroupsWithShop = {
+    ...supportGroups,
+    shopUrl:
+      (topupLink && topupLink.trim()) || supportGroups.shopUrl,
+  }
 
   if (loading) {
     return (
@@ -511,48 +514,9 @@ export function RechargeFormCard({
           </div>
         )}
 
-      {/* Buy redemption code + support */}
-      <div className='space-y-2.5 border-t pt-4 sm:space-y-3 sm:pt-6'>
-        <div className='flex items-center gap-2'>
-          <IconBadge tone='success' size='xs'>
-            <ShoppingCart />
-          </IconBadge>
-          <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
-            {t('Purchase redemption code')}
-          </Label>
-        </div>
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
-          <a
-            href={shopUrl}
-            target='_blank'
-            rel='noopener noreferrer'
-            className={cn(
-              buttonVariants({ variant: 'default', size: 'lg' }),
-              'h-10 gap-2 sm:flex-1'
-            )}
-          >
-            <ShoppingCart className='h-4 w-4' />
-            {t('Buy redemption code')}
-            <ExternalLink className='h-3.5 w-3.5 opacity-80' />
-          </a>
-          <a
-            href={SUPPORT_QQ_GROUP_URL}
-            target='_blank'
-            rel='noopener noreferrer'
-            className={cn(
-              buttonVariants({ variant: 'outline', size: 'lg' }),
-              'h-10 gap-2 sm:flex-1'
-            )}
-          >
-            <Users className='h-4 w-4' />
-            {t('QQ Group')}: {SUPPORT_QQ_GROUP}
-          </a>
-        </div>
-        <p className='text-muted-foreground text-xs'>
-          {t(
-            'Buy a code in the shop, then redeem it below. Contact support via QQ group if needed.'
-          )}
-        </p>
+      {/* Buy redemption code + support groups */}
+      <div className='border-t pt-4 sm:pt-6'>
+        <SupportGroupsPanel groups={supportGroupsWithShop} />
       </div>
 
       {/* Redemption Code Section */}

@@ -17,26 +17,26 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { Construction, ExternalLink, ShoppingCart, Users } from 'lucide-react'
+import { Construction } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { RichContent } from '@/components/rich-content'
-import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  REDEMPTION_SHOP_URL,
-  SUPPORT_QQ_GROUP,
-  SUPPORT_QQ_GROUP_URL,
-} from '@/features/wallet/constants'
+import { SupportGroupsPanel } from '@/features/wallet/components/support-groups-panel'
+import { resolveSupportGroups } from '@/features/wallet/lib/support-groups'
+import { useStatus } from '@/hooks/use-status'
 import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
-import { cn } from '@/lib/utils'
 
 import { getAboutContent } from './api'
 
 function SupportInfoCard() {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const groups = resolveSupportGroups(
+    (status as Record<string, unknown> | null) ?? null
+  )
 
   return (
     <Card className='border-primary/20 bg-card/80 mx-auto w-full max-w-xl text-left shadow-sm'>
@@ -48,61 +48,8 @@ function SupportInfoCard() {
           )}
         </p>
       </CardHeader>
-      <CardContent className='space-y-4'>
-        <div className='space-y-1.5'>
-          <div className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
-            {t('Recharge URL')}
-          </div>
-          <a
-            href={REDEMPTION_SHOP_URL}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='text-primary inline-flex max-w-full items-center gap-1.5 break-all text-sm font-medium underline-offset-4 hover:underline'
-          >
-            {REDEMPTION_SHOP_URL}
-            <ExternalLink className='h-3.5 w-3.5 shrink-0' />
-          </a>
-        </div>
-        <div className='space-y-1.5'>
-          <div className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
-            {t('QQ Group')}
-          </div>
-          <a
-            href={SUPPORT_QQ_GROUP_URL}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='text-primary inline-flex items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline'
-          >
-            {SUPPORT_QQ_GROUP}
-            <ExternalLink className='h-3.5 w-3.5 shrink-0' />
-          </a>
-        </div>
-        <div className='flex flex-col gap-2 pt-1 sm:flex-row'>
-          <a
-            href={REDEMPTION_SHOP_URL}
-            target='_blank'
-            rel='noopener noreferrer'
-            className={cn(
-              buttonVariants({ variant: 'default', size: 'lg' }),
-              'h-10 gap-2 sm:flex-1'
-            )}
-          >
-            <ShoppingCart className='h-4 w-4' />
-            {t('Buy redemption code')}
-          </a>
-          <a
-            href={SUPPORT_QQ_GROUP_URL}
-            target='_blank'
-            rel='noopener noreferrer'
-            className={cn(
-              buttonVariants({ variant: 'outline', size: 'lg' }),
-              'h-10 gap-2 sm:flex-1'
-            )}
-          >
-            <Users className='h-4 w-4' />
-            {t('Join QQ Group')}
-          </a>
-        </div>
+      <CardContent>
+        <SupportGroupsPanel groups={groups} variant='card' />
       </CardContent>
     </Card>
   )

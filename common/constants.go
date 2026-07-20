@@ -19,6 +19,13 @@ var Footer = ""
 var Logo = ""
 var TopUpLink = ""
 
+// Customer support group settings (shown in wallet / about when non-empty).
+// SupportQQGroup defaults to the existing public group number so current sites
+// keep working until an admin clears or changes it in 群管理.
+var SupportQQGroup = "949531417"
+var SupportWeChatGroupQRCode = ""
+var SupportDouyinGroupQRCode = ""
+
 var themeValue atomic.Value // stores string; safe for concurrent read/write
 
 func init() {

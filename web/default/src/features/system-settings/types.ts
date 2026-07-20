@@ -119,6 +119,9 @@ export type SiteSettings = {
   'legal.privacy_policy': string
   HeaderNavModules: string
   SidebarModulesAdmin: string
+  SupportQQGroup: string
+  SupportWeChatGroupQRCode: string
+  SupportDouyinGroupQRCode: string
 }
 
 export type AuthSettings = {

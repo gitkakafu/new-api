@@ -72,7 +72,8 @@ export const DEFAULT_MIN_TOPUP = 1
 export const REDEMPTION_SHOP_URL = 'https://pay.ldxp.cn/shop/MX9C4B03'
 
 /**
- * Customer support QQ group number
+ * Fallback customer support QQ group number when status API has no value yet.
+ * Prefer runtime settings from `/api/status` (SupportQQGroup).
  */
 export const SUPPORT_QQ_GROUP = '949531417'
 

@@ -28,6 +28,7 @@ import { NoticeSection } from '../maintenance/notice-section'
 import { SidebarModulesSection } from '../maintenance/sidebar-modules-section'
 import type { SiteSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
+import { GroupManagementSection } from './group-management-section'
 
 const SITE_SECTIONS = [
   {
@@ -49,6 +50,19 @@ const SITE_SECTIONS = [
             user_agreement: settings['legal.user_agreement'],
             privacy_policy: settings['legal.privacy_policy'],
           },
+        }}
+      />
+    ),
+  },
+  {
+    id: 'group-management',
+    titleKey: 'Group Management',
+    build: (settings: SiteSettings) => (
+      <GroupManagementSection
+        defaultValues={{
+          SupportQQGroup: settings.SupportQQGroup,
+          SupportWeChatGroupQRCode: settings.SupportWeChatGroupQRCode,
+          SupportDouyinGroupQRCode: settings.SupportDouyinGroupQRCode,
         }}
       />
     ),
