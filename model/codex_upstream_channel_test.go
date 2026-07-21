@@ -75,95 +75,83 @@ func splitCSV(s string) []string {
 	return out
 }
 
-func TestCodexGroupsPreferSub2APIThenFailoverToEflow(t *testing.T) {
+func TestCodexGroupsPreferLocalSub2APIThenFailoverToWish(t *testing.T) {
 	resetCodexUpstreamTestTables(t)
 
 	const (
 		groupVIP  = "1_vip_codex"
-		groupFree = "2_free_codex"
-		modelName = "gpt-5.1"
+		modelName = "gpt-5.4"
 	)
 
-	// Higher priority sub2api, lower priority e-flow — both groups, same model.
+	// Higher priority local sub2api, lower priority external wishtoapp backup.
+	// Both classified as sub2api for billing (0.04); failover is priority-based.
 	insertCodexChannel(t, 1, "sub2api-primary", "sub2api", "http://sub2api:8080",
-		groupVIP+","+groupFree, modelName, 100, common.ChannelStatusEnabled)
-	insertCodexChannel(t, 2, "eflow-fallback", "eflow", "http://e-flowcode.cc",
-		groupVIP+","+groupFree, modelName, 10, common.ChannelStatusEnabled)
-
-	InitChannelCache()
-
-	for _, group := range []string{groupVIP, groupFree} {
-		ch, err := GetRandomSatisfiedChannel(group, modelName, 0, "")
-		require.NoError(t, err)
-		require.NotNil(t, ch)
-		require.Equal(t, 1, ch.Id, "retry=0 should prefer sub2api for %s", group)
-		require.Equal(t, "sub2api", *ch.Tag)
-
-		ch2, err := GetRandomSatisfiedChannel(group, modelName, 1, "")
-		require.NoError(t, err)
-		require.NotNil(t, ch2)
-		require.Equal(t, 2, ch2.Id, "retry=1 should fall back to e-flow for %s", group)
-		require.Equal(t, "eflow", *ch2.Tag)
-	}
-}
-
-func TestCodexGroupsFailoverWhenSub2APIDisabled(t *testing.T) {
-	resetCodexUpstreamTestTables(t)
-
-	const (
-		groupVIP  = "1_vip_codex"
-		modelName = "gpt-5.1"
-	)
-
-	insertCodexChannel(t, 11, "sub2api-primary", "sub2api", "http://sub2api:8080",
-		groupVIP, modelName, 100, common.ChannelStatusManuallyDisabled)
-	insertCodexChannel(t, 12, "eflow-fallback", "eflow", "http://e-flowcode.cc",
-		groupVIP, modelName, 10, common.ChannelStatusEnabled)
+		groupVIP, modelName, 100, common.ChannelStatusEnabled)
+	insertCodexChannel(t, 2, "sub2api-wish-backup", "sub2api", "https://sub2api.wishtoapp.com",
+		groupVIP, modelName, 50, common.ChannelStatusEnabled)
 
 	InitChannelCache()
 
 	ch, err := GetRandomSatisfiedChannel(groupVIP, modelName, 0, "")
 	require.NoError(t, err)
 	require.NotNil(t, ch)
-	require.Equal(t, 12, ch.Id, "disabled sub2api must not be selected; e-flow is the only enabled channel")
-	require.Equal(t, "eflow", *ch.Tag)
+	require.Equal(t, 1, ch.Id, "retry=0 should prefer local sub2api")
+	require.Equal(t, "sub2api", *ch.Tag)
+
+	ch2, err := GetRandomSatisfiedChannel(groupVIP, modelName, 1, "")
+	require.NoError(t, err)
+	require.NotNil(t, ch2)
+	require.Equal(t, 2, ch2.Id, "retry=1 should fall back to wishtoapp")
+	require.Equal(t, "sub2api", *ch2.Tag)
+	require.Equal(t, "https://sub2api.wishtoapp.com", ch2.GetBaseURL())
 }
 
-func TestGptImage2OnlyOnSub2API(t *testing.T) {
+func TestCodexGroupsFailoverWhenLocalSub2APIDisabled(t *testing.T) {
+	resetCodexUpstreamTestTables(t)
+
+	const (
+		groupVIP  = "1_vip_codex"
+		modelName = "gpt-5.4"
+	)
+
+	insertCodexChannel(t, 11, "sub2api-primary", "sub2api", "http://sub2api:8080",
+		groupVIP, modelName, 100, common.ChannelStatusManuallyDisabled)
+	insertCodexChannel(t, 12, "sub2api-wish-backup", "sub2api", "https://sub2api.wishtoapp.com",
+		groupVIP, modelName, 50, common.ChannelStatusEnabled)
+
+	InitChannelCache()
+
+	ch, err := GetRandomSatisfiedChannel(groupVIP, modelName, 0, "")
+	require.NoError(t, err)
+	require.NotNil(t, ch)
+	require.Equal(t, 12, ch.Id, "disabled local sub2api must not be selected; wish is the only enabled channel")
+	require.Equal(t, "sub2api", *ch.Tag)
+}
+
+func TestGptImage2OnBothSub2APIBackends(t *testing.T) {
 	resetCodexUpstreamTestTables(t)
 
 	const (
 		groupVIP   = "1_vip_codex"
-		groupFree  = "2_free_codex"
 		imageModel = "gpt-image-2"
-		chatModel  = "gpt-5.1"
+		chatModel  = "gpt-5.4"
 	)
 
-	// sub2api serves both chat + image; e-flow only chat (no gpt-image-2 ability).
+	// Both local and wish serve chat + image (no e-flow for openai).
 	insertCodexChannel(t, 21, "sub2api-primary", "sub2api", "http://sub2api:8080",
-		groupVIP+","+groupFree, chatModel+","+imageModel, 100, common.ChannelStatusEnabled)
-	insertCodexChannel(t, 22, "eflow-fallback", "eflow", "http://e-flowcode.cc",
-		groupVIP+","+groupFree, chatModel, 10, common.ChannelStatusEnabled)
+		groupVIP, chatModel+","+imageModel, 100, common.ChannelStatusEnabled)
+	insertCodexChannel(t, 22, "sub2api-wish-backup", "sub2api", "https://sub2api.wishtoapp.com",
+		groupVIP, chatModel+","+imageModel, 50, common.ChannelStatusEnabled)
 
 	InitChannelCache()
 
-	for _, group := range []string{groupVIP, groupFree} {
-		ch, err := GetRandomSatisfiedChannel(group, imageModel, 0, "")
-		require.NoError(t, err)
-		require.NotNil(t, ch)
-		require.Equal(t, 21, ch.Id, "gpt-image-2 must only hit sub2api for %s", group)
+	ch, err := GetRandomSatisfiedChannel(groupVIP, imageModel, 0, "")
+	require.NoError(t, err)
+	require.NotNil(t, ch)
+	require.Equal(t, 21, ch.Id, "gpt-image-2 retry=0 should hit local sub2api")
 
-		// retry beyond available priorities should still stay on the only image channel
-		chRetry, err := GetRandomSatisfiedChannel(group, imageModel, 5, "")
-		require.NoError(t, err)
-		require.NotNil(t, chRetry)
-		require.Equal(t, 21, chRetry.Id)
-	}
-
-	// Ensure e-flow has no ability row for gpt-image-2
-	var eflowImageAbility int64
-	require.NoError(t, DB.Model(&Ability{}).
-		Where("channel_id = ? AND model = ? AND enabled = ?", 22, imageModel, true).
-		Count(&eflowImageAbility).Error)
-	require.Equal(t, int64(0), eflowImageAbility)
+	chRetry, err := GetRandomSatisfiedChannel(groupVIP, imageModel, 1, "")
+	require.NoError(t, err)
+	require.NotNil(t, chRetry)
+	require.Equal(t, 22, chRetry.Id, "gpt-image-2 retry=1 should hit wishtoapp")
 }
