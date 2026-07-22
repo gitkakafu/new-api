@@ -64,13 +64,13 @@ export function UseKeyDialog(props: Props) {
     if (client === 'openai') {
       if (shell === 'unix') {
         blocks.push({
-          path: 'Terminal (macOS / Linux)',
+          path: '终端（macOS / Linux）',
           content: `export OPENAI_BASE_URL="${apiV1}"
 export OPENAI_API_KEY="${key}"`,
         })
       } else if (shell === 'cmd') {
         blocks.push({
-          path: 'Command Prompt',
+          path: '命令提示符',
           content: `set OPENAI_BASE_URL=${apiV1}
 set OPENAI_API_KEY=${key}`,
         })
@@ -82,13 +82,13 @@ $env:OPENAI_API_KEY="${key}"`,
         })
       }
       blocks.push({
-        path: 'curl smoke test',
+        path: 'curl 连通性测试',
         content: `curl ${apiV1}/models -H "Authorization: Bearer ${key}"`,
       })
     } else if (client === 'codex') {
       if (shell === 'unix') {
         blocks.push({
-          path: '~/.codex/config.toml (excerpt)',
+          path: '~/.codex/config.toml（节选）',
           content: `model_provider = "openai"
 model = "gpt-5.4"
 
@@ -96,16 +96,16 @@ model = "gpt-5.4"
 name = "OpenAI"
 base_url = "${apiV1}"
 env_key = "OPENAI_API_KEY"`,
-          hint: t('Set OPENAI_API_KEY in your shell to this key, then restart Codex CLI.'),
+          hint: t('请在终端设置 OPENAI_API_KEY 为本密钥，然后重启 Codex CLI。'),
         })
         blocks.push({
-          path: 'Terminal',
+          path: '终端',
           content: `export OPENAI_API_KEY="${key}"
 export OPENAI_BASE_URL="${apiV1}"`,
         })
       } else if (shell === 'cmd') {
         blocks.push({
-          path: 'Command Prompt',
+          path: '命令提示符',
           content: `set OPENAI_API_KEY=${key}
 set OPENAI_BASE_URL=${apiV1}`,
         })
@@ -119,7 +119,7 @@ $env:OPENAI_BASE_URL="${apiV1}"`,
     } else if (client === 'claude') {
       if (shell === 'unix') {
         blocks.push({
-          path: 'Terminal',
+          path: '终端',
           content: `export ANTHROPIC_BASE_URL="${baseUrl}"
 export ANTHROPIC_AUTH_TOKEN="${key}"
 export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
@@ -135,11 +135,11 @@ export CLAUDE_CODE_ATTRIBUTION_HEADER=0`,
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
   }
 }`,
-          hint: t('Claude Code settings file — restart the CLI after writing.'),
+          hint: t('Claude Code 配置文件 — 写入后请重启 CLI。'),
         })
       } else if (shell === 'cmd') {
         blocks.push({
-          path: 'Command Prompt',
+          path: '命令提示符',
           content: `set ANTHROPIC_BASE_URL=${baseUrl}
 set ANTHROPIC_AUTH_TOKEN=${key}
 set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
@@ -161,13 +161,13 @@ $env:CLAUDE_CODE_ATTRIBUTION_HEADER=0`,
         : `${baseUrl}/v1beta`
       if (shell === 'unix') {
         blocks.push({
-          path: 'Terminal',
+          path: '终端',
           content: `export GOOGLE_GEMINI_BASE_URL="${geminiBase}"
 export GEMINI_API_KEY="${key}"`,
         })
       } else if (shell === 'cmd') {
         blocks.push({
-          path: 'Command Prompt',
+          path: '命令提示符',
           content: `set GOOGLE_GEMINI_BASE_URL=${geminiBase}
 set GEMINI_API_KEY=${key}`,
         })
@@ -187,7 +187,7 @@ $env:GEMINI_API_KEY="${key}"`,
     const ok = await copyToClipboard(content)
     if (ok) {
       setCopied(true)
-      toast.success(t('Copied'))
+      toast.success(t('已复制'))
       window.setTimeout(() => setCopied(false), 1500)
     }
   }
@@ -196,30 +196,30 @@ $env:GEMINI_API_KEY="${key}"`,
     <Dialog
       open={props.open}
       onOpenChange={props.onOpenChange}
-      title={t('Use Key')}
+      title={t('使用密钥')}
       contentClassName='sm:max-w-2xl'
       contentHeight='auto'
       bodyClassName='space-y-4'
       footer={
         <Button variant='outline' onClick={() => props.onOpenChange(false)}>
-          {t('Close')}
+          {t('关闭')}
         </Button>
       }
     >
       <p className='text-muted-foreground text-sm'>
         {t(
-          'Copy ready-to-paste env / config snippets for common CLI clients. Endpoint defaults to this site.'
+          '复制可直接粘贴的环境变量 / 配置片段，适配常见 CLI 客户端。接口地址默认使用本站。'
         )}
         {props.groupName ? (
           <span className='text-foreground'>
             {' '}
-            · {t('Group')}: {props.groupName}
+            · {t('分组')}: {props.groupName}
           </span>
         ) : null}
       </p>
 
       <div className='space-y-2'>
-        <Label>{t('Client')}</Label>
+        <Label>{t('客户端')}</Label>
         <RadioGroup
           value={client}
           onValueChange={(v) => setClient(v as ClientTab)}
@@ -244,7 +244,7 @@ $env:GEMINI_API_KEY="${key}"`,
       </div>
 
       <div className='space-y-2'>
-        <Label>{t('Shell')}</Label>
+        <Label>{t('终端类型')}</Label>
         <div className='flex flex-wrap gap-2'>
           {(
             [
@@ -286,7 +286,7 @@ $env:GEMINI_API_KEY="${key}"`,
                 )}
                 onClick={() => handleCopy(file.content)}
               >
-                {t('Copy')}
+                {t('复制')}
               </Button>
             </div>
             {file.hint ? (

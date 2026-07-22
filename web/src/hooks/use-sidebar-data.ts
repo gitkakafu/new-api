@@ -51,10 +51,10 @@ export function useSidebarData(): SidebarData {
     navGroups: [
       {
         id: 'drawing',
-        title: t('Drawing'),
+        title: t('画图'),
         items: [
           {
-            title: t('Draw'),
+            title: t('画图'),
             url: '/drawing',
             icon: ImageIcon,
           },

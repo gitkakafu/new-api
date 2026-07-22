@@ -228,14 +228,14 @@ export function DataTableRowActions<TData>({
                 setCurrentRow(apiKey)
                 setOpen('use-key')
               }}
-              aria-label={t('Use Key')}
+              aria-label={t('使用密钥')}
               className='text-emerald-600 hover:text-emerald-600 dark:text-emerald-400'
             />
           }
         >
           <Terminal className='size-4' />
         </TooltipTrigger>
-        <TooltipContent>{t('Use Key')}</TooltipContent>
+        <TooltipContent>{t('使用密钥')}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
@@ -251,14 +251,14 @@ export function DataTableRowActions<TData>({
                 setCurrentRow(apiKey)
                 setOpen('cc-switch')
               }}
-              aria-label={t('Import to CCS')}
+              aria-label={t('导入到 CCS')}
               className='text-sky-600 hover:text-sky-600 dark:text-sky-400'
             />
           }
         >
           <Upload className='size-4' />
         </TooltipTrigger>
-        <TooltipContent>{t('Import to CCS')}</TooltipContent>
+        <TooltipContent>{t('导入到 CCS')}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
@@ -326,7 +326,7 @@ export function DataTableRowActions<TData>({
             setOpen('use-key')
           }}
         >
-          {t('Use Key')}
+          {t('使用密钥')}
           <DropdownMenuShortcut>
             <Terminal size={16} />
           </DropdownMenuShortcut>
@@ -340,7 +340,7 @@ export function DataTableRowActions<TData>({
             setOpen('cc-switch')
           }}
         >
-          {t('Import to CCS')}
+          {t('导入到 CCS')}
           <DropdownMenuShortcut>
             <ArrowRightLeft size={16} />
           </DropdownMenuShortcut>

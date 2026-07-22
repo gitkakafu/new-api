@@ -61,9 +61,11 @@ export async function generateViaImagesApi(params: {
   if (params.quality) body.quality = params.quality
   if (params.group) body.group = params.group
 
-  const res = await api.post('/v1/images/generations', body, {
+  // Session-auth playground path (UserAuth + virtual token) — not /v1 TokenAuth
+  const res = await api.post('/pg/images/generations', body, {
     signal: params.signal,
     skipErrorHandler: true,
+    skipAuthRefresh: true,
     timeout: 300_000,
   } as Record<string, unknown>)
   return res.data
@@ -99,9 +101,11 @@ export async function generateViaResponsesTool(params: {
   }
   if (params.group) body.group = params.group
 
-  const res = await api.post('/v1/responses', body, {
+  // Session-auth playground path — bills logged-in user without sk- API key
+  const res = await api.post('/pg/responses', body, {
     signal: params.signal,
     skipErrorHandler: true,
+    skipAuthRefresh: true,
     timeout: 300_000,
   } as Record<string, unknown>)
 
@@ -133,5 +137,5 @@ export async function generateViaResponsesTool(params: {
 }
 
 export function modeLabel(mode: DrawMode): string {
-  return mode === 'images' ? 'Images API' : 'Responses + image tool'
+  return mode === 'images' ? '图像接口' : '对话 + 画图工具'
 }

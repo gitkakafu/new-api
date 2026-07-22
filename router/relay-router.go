@@ -64,7 +64,15 @@ func SetRelayRouter(router *gin.Engine) {
 	playgroundRouter.Use(middleware.SystemPerformanceCheck())
 	playgroundRouter.Use(middleware.UserAuth(), middleware.Distribute())
 	{
+		// Session-auth console relay (virtual token) — no API key required
 		playgroundRouter.POST("/chat/completions", controller.Playground)
+		// Drawing page: Images API + Responses image tool under the same UserAuth path
+		playgroundRouter.POST("/images/generations", func(c *gin.Context) {
+			controller.PlaygroundRelay(c, types.RelayFormatOpenAIImage)
+		})
+		playgroundRouter.POST("/responses", func(c *gin.Context) {
+			controller.PlaygroundRelay(c, types.RelayFormatOpenAIResponses)
+		})
 	}
 	relayV1Router := router.Group("/v1")
 	relayV1Router.Use(middleware.RouteTag("relay"))

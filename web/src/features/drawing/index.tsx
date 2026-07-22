@@ -44,7 +44,7 @@ export function DrawingPage() {
   const { t } = useTranslation()
   const [mode, setMode] = useState<DrawMode>('images')
   const [prompt, setPrompt] = useState(
-    'Cute orange cat astronaut sticker, front-facing, chubby and adorable, wearing a white space suit with subtle pastel accents, small helmet with clear visor, little paws visible, expressive big eyes, clean pastel background with lots of negative space, sticker-style with crisp outline, soft shading, high resolution, centered composition'
+    '可爱的橙色猫咪宇航员贴纸，正面朝向，圆润萌系，穿白色宇航服带淡彩点缀，小头盔透明面罩，小爪子露出来，大眼睛，干净粉彩背景留白，贴纸风格清晰描边，柔和阴影，高清，居中构图'
   )
   const [size, setSize] = useState<ImageSizeTier>('1K')
   const [chatModel, setChatModel] = useState<string>(RESPONSE_BASE_MODELS[0])
@@ -109,7 +109,7 @@ export function DrawingPage() {
   const handleGenerate = useCallback(async () => {
     const text = prompt.trim()
     if (!text) {
-      toast.warning(t('Please enter a prompt'))
+      toast.warning(t('请输入提示词'))
       return
     }
     setLoading(true)
@@ -158,9 +158,9 @@ export function DrawingPage() {
           } satisfies GeneratedImage
         })
         if (imgs.length === 0) {
-          toast.error(t('No image returned'))
+          toast.error(t('未返回图片'))
         } else {
-          toast.success(t('Image generated'))
+          toast.success(t('生成成功'))
           setResults((prev) => [...imgs, ...prev])
         }
       } else {
@@ -205,9 +205,9 @@ export function DrawingPage() {
           } satisfies GeneratedImage
         })
         if (imgs.length === 0) {
-          toast.error(t('No image returned'))
+          toast.error(t('未返回图片'))
         } else {
-          toast.success(t('Image generated'))
+          toast.success(t('生成成功'))
           setResults((prev) => [...imgs, ...prev])
         }
       }
@@ -216,7 +216,7 @@ export function DrawingPage() {
         (err as { response?: { data?: { error?: { message?: string } } } })
           ?.response?.data?.error?.message ||
         (err as Error)?.message ||
-        t('Request failed')
+        t('请求失败')
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -228,11 +228,11 @@ export function DrawingPage() {
       <div className='flex flex-col gap-1'>
         <h1 className='flex items-center gap-2 text-xl font-semibold tracking-tight md:text-2xl'>
           <ImageIcon className='text-primary size-6' />
-          {t('Draw')}
+          {t('画图')}
         </h1>
         <p className='text-muted-foreground max-w-3xl text-sm leading-6'>
           {t(
-            'Generate images with GPT Image 2 via Images API or Codex /responses image tool. 1K/2K list $0.04; 4K $0.08 (group ratio 0.04). Responses mode bills token usage of the base chat model plus image tool surcharge from upstream.'
+            '使用 GPT Image 2 生成图片。可选「图像接口」或「对话 + 画图工具」。1K/2K 约 $0.04/张，4K 约 $0.08/张（按分组倍率 0.04 计）。对话模式会额外按上游计收基础对话模型的 token 与画图工具附加费。'
           )}
         </p>
       </div>
@@ -240,7 +240,7 @@ export function DrawingPage() {
       <div className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]'>
         <div className='border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm'>
           <div className='space-y-2'>
-            <Label>{t('Mode')}</Label>
+            <Label>{t('模式')}</Label>
             <div className='grid grid-cols-2 gap-2'>
               <Button
                 type='button'
@@ -248,9 +248,9 @@ export function DrawingPage() {
                 className='h-auto flex-col items-start gap-0.5 py-2.5 text-left'
                 onClick={() => setMode('images')}
               >
-                <span className='font-medium'>{t('Images API')}</span>
+                <span className='font-medium'>{t('图像接口')}</span>
                 <span className='text-xs font-normal opacity-80'>
-                  /v1/images/generations
+                  /pg/images/generations
                 </span>
               </Button>
               <Button
@@ -259,9 +259,9 @@ export function DrawingPage() {
                 className='h-auto flex-col items-start gap-0.5 py-2.5 text-left'
                 onClick={() => setMode('responses')}
               >
-                <span className='font-medium'>{t('Responses + tool')}</span>
+                <span className='font-medium'>{t('对话 + 画图工具')}</span>
                 <span className='text-xs font-normal opacity-80'>
-                  /v1/responses · image_generation
+                  /pg/responses · image_generation
                 </span>
               </Button>
             </div>
@@ -269,7 +269,7 @@ export function DrawingPage() {
 
           {mode === 'responses' && (
             <div className='space-y-2'>
-              <Label>{t('Base chat model')}</Label>
+              <Label>{t('基础对话模型')}</Label>
               <Select
                 value={chatModel}
                 onValueChange={(v) => v && setChatModel(String(v))}
@@ -289,7 +289,7 @@ export function DrawingPage() {
               </Select>
               <p className='text-muted-foreground text-xs'>
                 {t(
-                  'GPT Image 2 is invoked as the image_generation tool on this Codex model (same as sub2api test flow).'
+                  '在该 Codex 对话模型上调用 image_generation 工具生成图片（与 sub2api 测流通路一致）。'
                 )}
               </p>
             </div>
@@ -299,14 +299,14 @@ export function DrawingPage() {
             <div className='space-y-1 rounded-lg border border-dashed px-3 py-2 text-sm'>
               <div className='font-medium'>{DEFAULT_IMAGE_MODEL}</div>
               <p className='text-muted-foreground text-xs'>
-                {t('Fixed-price plaza model with size-based multiplier.')}
+                {t('广场固定价模型，按尺寸倍率计费。')}
               </p>
             </div>
           )}
 
           <div className='grid gap-3 sm:grid-cols-2'>
             <div className='space-y-2'>
-              <Label>{t('Size')}</Label>
+              <Label>{t('尺寸')}</Label>
               <Select
                 value={size}
                 onValueChange={(v) => v && setSize(String(v) as ImageSizeTier)}
@@ -328,13 +328,13 @@ export function DrawingPage() {
             </div>
 
             <div className='space-y-2'>
-              <Label>{t('Group')}</Label>
+              <Label>{t('分组')}</Label>
               <Select
                 value={group}
                 onValueChange={(v) => v && setGroup(String(v))}
               >
                 <SelectTrigger className='w-full'>
-                  <SelectValue placeholder={t('Select group')} />
+                  <SelectValue placeholder={t('选择分组')} />
                 </SelectTrigger>
                 <SelectContent alignItemWithTrigger={false}>
                   <SelectGroup>
@@ -352,13 +352,13 @@ export function DrawingPage() {
           </div>
 
           <div className='space-y-2'>
-            <Label>{t('Prompt')}</Label>
+            <Label>{t('提示词')}</Label>
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={8}
               className='min-h-40 resize-y font-mono text-sm'
-              placeholder={t('Describe the image you want…')}
+              placeholder={t('描述你想生成的图片…')}
             />
           </div>
 
@@ -369,7 +369,7 @@ export function DrawingPage() {
               ) : (
                 <Sparkles className='size-4' />
               )}
-              {loading ? t('Generating…') : t('Generate')}
+              {loading ? t('生成中…') : t('生成')}
             </Button>
             <Button
               type='button'
@@ -379,23 +379,23 @@ export function DrawingPage() {
               className='gap-2'
             >
               <Trash2 className='size-4' />
-              {t('Clear results')}
+              {t('清空结果')}
             </Button>
           </div>
         </div>
 
         <div className='border-border bg-card min-h-[320px] space-y-3 rounded-xl border p-4 shadow-sm'>
           <div className='flex items-center justify-between gap-2'>
-            <h2 className='text-sm font-semibold'>{t('Results')}</h2>
+            <h2 className='text-sm font-semibold'>{t('生成结果')}</h2>
             <span className='text-muted-foreground text-xs'>
-              {results.length} {t('items')}
+              {results.length} {t('张')}
             </span>
           </div>
 
           {results.length === 0 ? (
             <div className='text-muted-foreground flex min-h-[280px] flex-col items-center justify-center gap-2 text-center text-sm'>
               <ImageIcon className='size-10 opacity-40' />
-              <p>{t('Generated images will appear here.')}</p>
+              <p>{t('生成的图片会显示在这里。')}</p>
             </div>
           ) : (
             <div className='grid gap-4 sm:grid-cols-2'>
@@ -417,7 +417,7 @@ export function DrawingPage() {
                     </a>
                   ) : (
                     <div className='bg-muted text-destructive flex aspect-square items-center justify-center p-3 text-center text-xs'>
-                      {img.error || t('No image')}
+                      {img.error || t('无图片')}
                     </div>
                   )}
                   <div className='space-y-0.5 p-2 text-[11px] leading-4'>

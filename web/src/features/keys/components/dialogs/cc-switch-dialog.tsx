@@ -31,23 +31,23 @@ import { getUserModels } from '@/lib/api'
 const APP_CONFIGS = {
   claude: {
     label: 'Claude',
-    defaultName: 'My Claude',
+    defaultName: '我的 Claude',
     modelFields: [
-      { key: 'model', labelKey: 'Primary Model', required: true },
-      { key: 'haikuModel', labelKey: 'Haiku Model', required: false },
-      { key: 'sonnetModel', labelKey: 'Sonnet Model', required: false },
-      { key: 'opusModel', labelKey: 'Opus Model', required: false },
+      { key: 'model', labelKey: '主模型', required: true },
+      { key: 'haikuModel', labelKey: 'Haiku 模型', required: false },
+      { key: 'sonnetModel', labelKey: 'Sonnet 模型', required: false },
+      { key: 'opusModel', labelKey: 'Opus 模型', required: false },
     ],
   },
   codex: {
     label: 'Codex',
-    defaultName: 'My Codex',
-    modelFields: [{ key: 'model', labelKey: 'Primary Model', required: true }],
+    defaultName: '我的 Codex',
+    modelFields: [{ key: 'model', labelKey: '主模型', required: true }],
   },
   gemini: {
     label: 'Gemini',
-    defaultName: 'My Gemini',
-    modelFields: [{ key: 'model', labelKey: 'Primary Model', required: true }],
+    defaultName: '我的 Gemini',
+    modelFields: [{ key: 'model', labelKey: '主模型', required: true }],
   },
 } as const
 
@@ -134,7 +134,7 @@ export function CCSwitchDialog(props: Props) {
 
   const handleSubmit = () => {
     if (!models.model) {
-      toast.warning(t('Please select a primary model'))
+      toast.warning(t('请选择主模型'))
       return
     }
     const key = props.tokenKey.startsWith('sk-')
@@ -149,7 +149,7 @@ export function CCSwitchDialog(props: Props) {
     <Dialog
       open={props.open}
       onOpenChange={props.onOpenChange}
-      title={t('Import to CCS')}
+      title={t('导入到 CCS')}
       contentClassName='sm:max-w-md'
       contentHeight='auto'
       bodyClassName={
@@ -158,15 +158,20 @@ export function CCSwitchDialog(props: Props) {
       footer={
         <>
           <Button variant='outline' onClick={() => props.onOpenChange(false)}>
-            {t('Cancel')}
+            {t('取消')}
           </Button>
-          <Button onClick={handleSubmit}>{t('Open CCS')}</Button>
+          <Button onClick={handleSubmit}>{t('打开 CCS')}</Button>
         </>
       }
     >
       <div className='space-y-4'>
+        <p className='text-muted-foreground text-sm'>
+          {t(
+            '将本密钥导入 CCS（CC Switch）桌面客户端。请选择应用类型与主模型后打开本地协议链接。'
+          )}
+        </p>
         <div className='space-y-2'>
-          <Label>{t('Application')}</Label>
+          <Label>{t('应用')}</Label>
           <RadioGroup
             value={app}
             onValueChange={handleAppChange}
@@ -189,7 +194,7 @@ export function CCSwitchDialog(props: Props) {
         </div>
 
         <div className='space-y-2'>
-          <Label>{t('Name')}</Label>
+          <Label>{t('名称')}</Label>
           <ComboboxInput
             options={[]}
             value={name}
@@ -214,8 +219,8 @@ export function CCSwitchDialog(props: Props) {
               onValueChange={(v) =>
                 setModels((prev) => ({ ...prev, [field.key]: v }))
               }
-              placeholder={t('Select or enter model name')}
-              emptyText={t('No models found')}
+              placeholder={t('选择或输入模型名')}
+              emptyText={t('未找到模型')}
             />
           </div>
         ))}

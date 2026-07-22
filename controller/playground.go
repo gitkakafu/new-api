@@ -12,7 +12,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Playground is the legacy chat entry (OpenAI chat completions format).
 func Playground(c *gin.Context) {
+	PlaygroundRelay(c, types.RelayFormatOpenAI)
+}
+
+// PlaygroundRelay runs a session-authenticated relay with a virtual token so
+// console UIs (chat / drawing) can bill the logged-in user without an API key.
+func PlaygroundRelay(c *gin.Context, relayFormat types.RelayFormat) {
 	var newAPIError *types.NewAPIError
 
 	defer func() {
@@ -29,7 +36,7 @@ func Playground(c *gin.Context) {
 		return
 	}
 
-	relayInfo, err := relaycommon.GenRelayInfo(c, types.RelayFormatOpenAI, nil, nil)
+	relayInfo, err := relaycommon.GenRelayInfo(c, relayFormat, nil, nil)
 	if err != nil {
 		newAPIError = types.NewError(err, types.ErrorCodeInvalidRequest, types.ErrOptionWithSkipRetry())
 		return
@@ -45,12 +52,22 @@ func Playground(c *gin.Context) {
 	}
 	userCache.WriteContext(c)
 
+	tokenName := "playground"
+	switch relayFormat {
+	case types.RelayFormatOpenAIImage:
+		tokenName = "drawing-images"
+	case types.RelayFormatOpenAIResponses:
+		tokenName = "drawing-responses"
+	default:
+		tokenName = "playground"
+	}
+
 	tempToken := &model.Token{
 		UserId: userId,
-		Name:   fmt.Sprintf("playground-%s", relayInfo.UsingGroup),
+		Name:   fmt.Sprintf("%s-%s", tokenName, relayInfo.UsingGroup),
 		Group:  relayInfo.UsingGroup,
 	}
 	_ = middleware.SetupContextForToken(c, tempToken)
 
-	Relay(c, types.RelayFormatOpenAI)
+	Relay(c, relayFormat)
 }

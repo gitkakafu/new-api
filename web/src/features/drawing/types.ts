@@ -61,19 +61,19 @@ export const SIZE_OPTIONS: {
     value: '1K',
     label: '1K',
     dimension: '1024x1024',
-    note: '$0.04 / image (group 0.04)',
+    note: '约 $0.04 / 张（分组倍率 0.04）',
   },
   {
     value: '2K',
     label: '2K',
     dimension: '2048x2048',
-    note: '$0.04 / image (group 0.04)',
+    note: '约 $0.04 / 张（分组倍率 0.04）',
   },
   {
     value: '4K',
     label: '4K',
     dimension: '3840x2160',
-    note: '$0.08 / image (group 0.04)',
+    note: '约 $0.08 / 张（分组倍率 0.04）',
   },
 ]
 
