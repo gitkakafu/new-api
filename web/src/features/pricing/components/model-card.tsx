@@ -31,7 +31,11 @@ import {
 } from '../lib/dynamic-price'
 import { parseTags } from '../lib/filters'
 import { isTokenBasedModel } from '../lib/model-helpers'
-import { formatPrice, formatRequestPrice } from '../lib/price'
+import {
+  formatPrice,
+  formatRequestPrice,
+  getRequestPriceNote,
+} from '../lib/price'
 import type { PricingModel, TokenUnit } from '../types'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
 import { ModelPerfBadge, type ModelPerfBadgeData } from './model-perf-badge'
@@ -177,9 +181,10 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
       </>
     )
   } else {
+    const requestNote = getRequestPriceNote(props.model)
     priceSummary = (
-      <span className='text-muted-foreground whitespace-nowrap'>
-        <span className='text-foreground font-mono font-semibold'>
+      <span className='text-muted-foreground min-w-0'>
+        <span className='text-foreground font-mono font-semibold whitespace-nowrap'>
           {formatRequestPrice(
             props.model,
             showRechargePrice,
@@ -189,6 +194,11 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
           )}
         </span>{' '}
         / {t('request')}
+        {requestNote ? (
+          <span className='text-muted-foreground/80 mt-0.5 block text-[11px]'>
+            {requestNote}
+          </span>
+        ) : null}
       </span>
     )
   }

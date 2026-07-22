@@ -27,6 +27,8 @@ import {
   Copy,
   Link,
   Loader2,
+  Terminal,
+  Upload,
 } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -219,6 +221,52 @@ export function DataTableRowActions<TData>({
             <Button
               variant='ghost'
               size='icon-sm'
+              onClick={async () => {
+                const realKey = await resolveRealKey(apiKey.id)
+                if (!realKey) return
+                setResolvedKey(realKey)
+                setCurrentRow(apiKey)
+                setOpen('use-key')
+              }}
+              aria-label={t('Use Key')}
+              className='text-emerald-600 hover:text-emerald-600 dark:text-emerald-400'
+            />
+          }
+        >
+          <Terminal className='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>{t('Use Key')}</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant='ghost'
+              size='icon-sm'
+              onClick={async () => {
+                const realKey = await resolveRealKey(apiKey.id)
+                if (!realKey) return
+                setResolvedKey(realKey)
+                setCurrentRow(apiKey)
+                setOpen('cc-switch')
+              }}
+              aria-label={t('Import to CCS')}
+              className='text-sky-600 hover:text-sky-600 dark:text-sky-400'
+            />
+          }
+        >
+          <Upload className='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>{t('Import to CCS')}</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant='ghost'
+              size='icon-sm'
               onClick={() => {
                 setCurrentRow(apiKey)
                 setOpen('update')
@@ -275,10 +323,24 @@ export function DataTableRowActions<TData>({
             if (!realKey) return
             setResolvedKey(realKey)
             setCurrentRow(apiKey)
+            setOpen('use-key')
+          }}
+        >
+          {t('Use Key')}
+          <DropdownMenuShortcut>
+            <Terminal size={16} />
+          </DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={async () => {
+            const realKey = await resolveRealKey(apiKey.id)
+            if (!realKey) return
+            setResolvedKey(realKey)
+            setCurrentRow(apiKey)
             setOpen('cc-switch')
           }}
         >
-          {t('CC Switch')}
+          {t('Import to CCS')}
           <DropdownMenuShortcut>
             <ArrowRightLeft size={16} />
           </DropdownMenuShortcut>

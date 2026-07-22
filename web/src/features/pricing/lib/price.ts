@@ -264,9 +264,35 @@ export function formatRequestPrice(
     usdExchangeRate
   )
 
+  // gpt-image-2: plaza base stays $0.04 (1K/2K); 4K is 2× → $0.08 at group ratio 0.04.
+  if (isGptImage2Model(model.model_name)) {
+    const base = formatCurrencyFromUSD(priceInUSD, {
+      digitsLarge: 4,
+      digitsSmall: 4,
+      abbreviate: false,
+    })
+    const fourK = formatCurrencyFromUSD(priceInUSD * 2, {
+      digitsLarge: 4,
+      digitsSmall: 4,
+      abbreviate: false,
+    })
+    return `${base} / 4K ${fourK}`
+  }
+
   return formatCurrencyFromUSD(priceInUSD, {
     digitsLarge: 4,
     digitsSmall: 4,
     abbreviate: false,
   })
+}
+
+export function isGptImage2Model(modelName?: string | null): boolean {
+  if (!modelName) return false
+  return modelName.toLowerCase().includes('gpt-image-2')
+}
+
+/** Extra plaza billing note for models with size-tier multipliers. */
+export function getRequestPriceNote(model: PricingModel): string | null {
+  if (!isGptImage2Model(model.model_name)) return null
+  return '1K/2K base · 4K ×2'
 }

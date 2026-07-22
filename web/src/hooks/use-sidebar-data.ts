@@ -21,11 +21,10 @@ import {
   Box,
   CreditCard,
   FileText,
-  FlaskConical,
+  Image as ImageIcon,
   Key,
   LayoutDashboard,
   ListTodo,
-  MessageSquare,
   Radio,
   ServerCog,
   Settings,
@@ -51,18 +50,13 @@ export function useSidebarData(): SidebarData {
   return {
     navGroups: [
       {
-        id: 'chat',
-        title: t('Chat'),
+        id: 'drawing',
+        title: t('Drawing'),
         items: [
           {
-            title: t('Playground'),
-            url: '/playground',
-            icon: FlaskConical,
-          },
-          {
-            title: t('Chat'),
-            icon: MessageSquare,
-            type: 'chat-presets',
+            title: t('Draw'),
+            url: '/drawing',
+            icon: ImageIcon,
           },
         ],
       },

@@ -67,7 +67,7 @@ func ComputeToolCallQuota(usage ToolCallUsage, groupRatio float64) ToolCallResul
 	}
 
 	if usage.ImageGenerationCall {
-		price := operation_setting.GetGPTImage1PriceOnceCall(usage.ImageGenerationQuality, usage.ImageGenerationSize)
+		price := operation_setting.GetGPTImagePriceOnceCall(usage.ModelName, usage.ImageGenerationQuality, usage.ImageGenerationSize)
 		quota := common.QuotaRound(price * common.QuotaPerUnit * groupRatio)
 		items = append(items, ToolCallItem{
 			Name:       "image_generation",

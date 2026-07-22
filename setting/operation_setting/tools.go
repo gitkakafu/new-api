@@ -1,6 +1,7 @@
 package operation_setting
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -186,6 +187,53 @@ func GetGPTImage1PriceOnceCall(quality string, size string) float64 {
 	}
 
 	return GPTImage1High1024x1024
+}
+
+// GPT Image 2 list-price before group ratio (plaza keeps ModelPrice=1.0 @ group 0.04 → $0.04).
+// 4K uses 2× list multiplier so effective charge is $0.08 with the same group ratio.
+const (
+	GPTImage2BasePrice = 1.0 // * group ratio 0.04 = $0.04
+	GPTImage2Price4K   = 2.0 // * group ratio 0.04 = $0.08
+)
+
+// GetGPTImage2PriceOnceCall returns the list price for a gpt-image-2 image_generation tool call.
+// size may be "1K"/"2K"/"4K", "auto", or a "WxH" dimension string.
+func GetGPTImage2PriceOnceCall(quality string, size string) float64 {
+	_ = quality // quality does not affect gpt-image-2 plaza pricing in this deployment
+	s := strings.TrimSpace(strings.ToLower(size))
+	if s == "" || s == "auto" {
+		return GPTImage2BasePrice
+	}
+	switch s {
+	case "4k", "3840x2160", "2160x3840", "4096x4096":
+		return GPTImage2Price4K
+	case "1k", "2k", "1024x1024", "1024x1536", "1536x1024", "2048x2048", "2048x1152", "1152x2048":
+		return GPTImage2BasePrice
+	}
+	parts := strings.Split(s, "x")
+	if len(parts) == 2 {
+		var w, h int
+		if _, err := fmt.Sscanf(parts[0], "%d", &w); err == nil {
+			if _, err2 := fmt.Sscanf(parts[1], "%d", &h); err2 == nil && w > 0 && h > 0 {
+				maxEdge := w
+				if h > maxEdge {
+					maxEdge = h
+				}
+				if maxEdge > 2048 {
+					return GPTImage2Price4K
+				}
+			}
+		}
+	}
+	return GPTImage2BasePrice
+}
+
+// GetGPTImagePriceOnceCall picks the correct GPT image price table by model name.
+func GetGPTImagePriceOnceCall(modelName string, quality string, size string) float64 {
+	if strings.Contains(strings.ToLower(modelName), "gpt-image-2") {
+		return GetGPTImage2PriceOnceCall(quality, size)
+	}
+	return GetGPTImage1PriceOnceCall(quality, size)
 }
 
 // ---------------------------------------------------------------------------

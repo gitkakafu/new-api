@@ -149,7 +149,7 @@ export function CCSwitchDialog(props: Props) {
     <Dialog
       open={props.open}
       onOpenChange={props.onOpenChange}
-      title={t('Import to CC Switch')}
+      title={t('Import to CCS')}
       contentClassName='sm:max-w-md'
       contentHeight='auto'
       bodyClassName={
@@ -160,7 +160,7 @@ export function CCSwitchDialog(props: Props) {
           <Button variant='outline' onClick={() => props.onOpenChange(false)}>
             {t('Cancel')}
           </Button>
-          <Button onClick={handleSubmit}>{t('Open CC Switch')}</Button>
+          <Button onClick={handleSubmit}>{t('Open CCS')}</Button>
         </>
       }
     >
