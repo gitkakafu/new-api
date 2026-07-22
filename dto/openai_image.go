@@ -132,9 +132,9 @@ func indexComma(s string) int {
 	return -1
 }
 
-// gptImage2SizePriceRatio maps gpt-image-2 size tiers to list-price multipliers.
+// GptImage2SizePriceRatio maps gpt-image-2 size tiers to list-price multipliers.
 // Plaza base is ModelPrice=1.0 with group ratio 0.04 → $0.04; 4K uses 2× → $0.08.
-func gptImage2SizePriceRatio(size string) float64 {
+func GptImage2SizePriceRatio(size string) float64 {
 	s := strings.TrimSpace(strings.ToLower(size))
 	if s == "" || s == "auto" {
 		return 1.0
@@ -190,7 +190,7 @@ func (i *ImageRequest) GetTokenCountMeta() *types.TokenCountMeta {
 		}
 	} else if strings.HasPrefix(i.Model, "gpt-image-2") {
 		// Dynamic per-call: 1K/2K = 1× ($0.04 @ group 0.04), 4K = 2× ($0.08).
-		sizeRatio = gptImage2SizePriceRatio(i.Size)
+		sizeRatio = GptImage2SizePriceRatio(i.Size)
 		qualityRatio = 1.0
 	}
 

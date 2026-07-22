@@ -147,6 +147,39 @@ func ImageHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *type
 		logContent = append(logContent, fmt.Sprintf("生成数量 %d", imageN))
 	}
 
+	// When request size is "auto" (or under-billed), settle against actual output size.
+	// e.g. auto → model returns 4K must charge 4K tier, not the 1× preconsume default.
+	if outSize, ok := c.Get("image_output_size"); ok {
+		if s, ok2 := outSize.(string); ok2 && strings.TrimSpace(s) != "" {
+			adjustGptImage2PriceForOutputSize(info, request, s, &logContent)
+		}
+	}
+
 	service.PostTextConsumeQuota(c, info, usage.(*dto.Usage), logContent)
 	return nil
+}
+
+// adjustGptImage2PriceForOutputSize re-applies size price multiplier using the
+// actual output WxH when it differs from the request-size ratio (esp. auto).
+func adjustGptImage2PriceForOutputSize(info *relaycommon.RelayInfo, request *dto.ImageRequest, outSize string, logContent *[]string) {
+	if info == nil || request == nil || !strings.HasPrefix(request.Model, "gpt-image-2") {
+		return
+	}
+	outSize = strings.TrimSpace(outSize)
+	if outSize == "" {
+		return
+	}
+	reqRatio := dto.GptImage2SizePriceRatio(request.Size)
+	outRatio := dto.GptImage2SizePriceRatio(outSize)
+	if outRatio <= 0 || reqRatio <= 0 {
+		return
+	}
+	if outRatio == reqRatio {
+		*logContent = append(*logContent, fmt.Sprintf("输出 %s", outSize))
+		return
+	}
+	// ModelPrice already includes reqRatio from pre-consume; scale to outRatio.
+	scale := outRatio / reqRatio
+	info.PriceData.ModelPrice = info.PriceData.ModelPrice * scale
+	*logContent = append(*logContent, fmt.Sprintf("输出 %s (计费倍率 %.2f→%.2f)", outSize, reqRatio, outRatio))
 }

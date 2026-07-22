@@ -1,8 +1,13 @@
 package openai
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"strconv"
@@ -50,6 +55,10 @@ func OpenaiImageHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.
 	}
 
 	updateOpenAIImageCount(info, gjson.GetBytes(responseBody, "data.#").Int())
+
+	if outSize := detectOpenAIImageOutputSize(responseBody); outSize != "" {
+		c.Set("image_output_size", outSize)
+	}
 
 	// 写入新的 response body
 	service.IOCopyBytesGracefully(c, resp, responseBody)
@@ -330,4 +339,44 @@ func openaiImageJSONAsStreamHandler(c *gin.Context, info *relaycommon.RelayInfo,
 
 func writeOpenaiImageStreamDone(c *gin.Context) error {
 	return helper.StringData(c, "[DONE]")
+}
+
+// detectOpenAIImageOutputSize reads the first returned image (b64_json preferred)
+// and returns WxH for billing when request size is auto.
+func detectOpenAIImageOutputSize(responseBody []byte) string {
+	data := gjson.GetBytes(responseBody, "data")
+	if !data.IsArray() || !data.Get("0").Exists() {
+		return ""
+	}
+	first := data.Get("0")
+	if b64 := strings.TrimSpace(first.Get("b64_json").String()); b64 != "" {
+		if w, h, ok := decodeImageB64Dimensions(b64); ok {
+			return fmt.Sprintf("%dx%d", w, h)
+		}
+	}
+	if s := strings.TrimSpace(first.Get("size").String()); s != "" {
+		return s
+	}
+	return ""
+}
+
+func decodeImageB64Dimensions(b64 string) (int, int, bool) {
+	if i := strings.Index(b64, "base64,"); i >= 0 {
+		b64 = b64[i+len("base64,"):]
+	}
+	raw, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		raw, err = base64.RawStdEncoding.DecodeString(b64)
+		if err != nil {
+			return 0, 0, false
+		}
+	}
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return 0, 0, false
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return 0, 0, false
+	}
+	return cfg.Width, cfg.Height, true
 }

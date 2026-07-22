@@ -8,8 +8,7 @@ License, or (at your option) any later version.
 */
 import { api } from '@/lib/api'
 
-import type { DrawMode, GroupOption, ImageSizeTier } from './types'
-import { sizeToApiDimension } from './types'
+import type { DrawMode, GroupOption } from './types'
 
 export async function getUserGroups(): Promise<GroupOption[]> {
   const res = await api.get('/api/user/self/groups')
@@ -24,13 +23,6 @@ export async function getUserGroups(): Promise<GroupOption[]> {
   }))
 }
 
-export async function getUserModels(group: string): Promise<string[]> {
-  const res = await api.get('/api/user/models', { params: { group } })
-  const { data } = res
-  if (!data.success || !Array.isArray(data.data)) return []
-  return data.data as string[]
-}
-
 export interface ImagesGenerateResult {
   created?: number
   data?: Array<{
@@ -41,11 +33,23 @@ export interface ImagesGenerateResult {
   error?: { message?: string; type?: string }
 }
 
-/** Path 1: OpenAI Images API → /v1/images/generations (gpt-image-2) */
+const pgOpts = (signal?: AbortSignal) =>
+  ({
+    signal,
+    skipErrorHandler: true,
+    skipAuthRefresh: true,
+    timeout: 300_000,
+  }) as Record<string, unknown>
+
+/**
+ * 生成图像 → /pg/images/generations
+ * @param size `auto` 或归一化后的 `WxH`
+ */
 export async function generateViaImagesApi(params: {
   model: string
   prompt: string
-  size: ImageSizeTier
+  /** `auto` or `WxH` */
+  size: string
   quality?: string
   n?: number
   group?: string
@@ -54,88 +58,57 @@ export async function generateViaImagesApi(params: {
   const body: Record<string, unknown> = {
     model: params.model,
     prompt: params.prompt,
-    size: sizeToApiDimension(params.size),
+    size: params.size,
     n: params.n ?? 1,
     response_format: 'b64_json',
   }
   if (params.quality) body.quality = params.quality
   if (params.group) body.group = params.group
 
-  // Session-auth playground path (UserAuth + virtual token) — not /v1 TokenAuth
-  const res = await api.post('/pg/images/generations', body, {
-    signal: params.signal,
-    skipErrorHandler: true,
-    skipAuthRefresh: true,
-    timeout: 300_000,
-  } as Record<string, unknown>)
+  const res = await api.post(
+    '/pg/images/generations',
+    body,
+    pgOpts(params.signal)
+  )
   return res.data
 }
 
-/** Path 2: Codex /v1/responses + image_generation tool (same as sub2api GPT Image 2 test) */
-export async function generateViaResponsesTool(params: {
-  chatModel: string
+/**
+ * 编辑图像 → /pg/images/edits（JSON + base64 图，可多张）
+ * image 字段为 data URL 或纯 base64 字符串数组。
+ */
+export async function editViaImagesApi(params: {
+  model: string
   prompt: string
-  size: ImageSizeTier
+  /** data:image/...;base64,... or raw base64 */
+  images: string[]
+  /** `auto` or `WxH` */
+  size: string
   quality?: string
+  n?: number
   group?: string
   signal?: AbortSignal
-}): Promise<{
-  images: Array<{ b64?: string; url?: string; revisedPrompt?: string }>
-  raw?: unknown
-  error?: string
-}> {
-  const size = sizeToApiDimension(params.size)
-  const body: Record<string, unknown> = {
-    model: params.chatModel,
-    input: params.prompt,
-    tools: [
-      {
-        type: 'image_generation',
-        model: 'gpt-image-2',
-        size,
-        quality: params.quality || 'auto',
-      },
-    ],
-    tool_choice: { type: 'image_generation' },
-    stream: false,
+}): Promise<ImagesGenerateResult> {
+  if (!params.images.length) {
+    return { error: { message: '至少选择一张参考图' } }
   }
+
+  const body: Record<string, unknown> = {
+    model: params.model,
+    prompt: params.prompt,
+    size: params.size,
+    n: params.n ?? 1,
+    response_format: 'b64_json',
+    // OpenAI-compatible multi-image edit: array of base64 / data URLs
+    image: params.images.length === 1 ? params.images[0] : params.images,
+  }
+  if (params.quality) body.quality = params.quality
   if (params.group) body.group = params.group
 
-  // Session-auth playground path — bills logged-in user without sk- API key
-  const res = await api.post('/pg/responses', body, {
-    signal: params.signal,
-    skipErrorHandler: true,
-    skipAuthRefresh: true,
-    timeout: 300_000,
-  } as Record<string, unknown>)
-
-  const data = res.data as {
-    error?: { message?: string }
-    output?: Array<{
-      type?: string
-      result?: string
-      revised_prompt?: string
-      status?: string
-    }>
-  }
-
-  if (data?.error?.message) {
-    return { images: [], error: data.error.message, raw: data }
-  }
-
-  const images: Array<{ b64?: string; url?: string; revisedPrompt?: string }> =
-    []
-  for (const item of data?.output || []) {
-    if (item.type === 'image_generation_call' && item.result) {
-      images.push({
-        b64: item.result,
-        revisedPrompt: item.revised_prompt,
-      })
-    }
-  }
-  return { images, raw: data }
+  const res = await api.post('/pg/images/edits', body, pgOpts(params.signal))
+  return res.data
 }
 
 export function modeLabel(mode: DrawMode): string {
-  return mode === 'images' ? '图像接口' : '对话 + 画图工具'
+  return mode === 'edit' ? '编辑图像' : '生成图像'
 }

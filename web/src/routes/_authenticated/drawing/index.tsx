@@ -22,8 +22,10 @@ export const Route = createFileRoute('/_authenticated/drawing/')({
 })
 
 function DrawingRoutePage() {
+  // Main defaults to overflow-hidden; enable page-level wheel scroll
+  // (same idea as SectionPageLayout content: min-h-0 flex-1 overflow-auto).
   return (
-    <Main className='p-0'>
+    <Main className='min-h-0 flex-1 overflow-y-auto overscroll-contain p-0'>
       <DrawingPage />
     </Main>
   )
