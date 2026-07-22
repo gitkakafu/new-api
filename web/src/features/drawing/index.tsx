@@ -6,7 +6,14 @@ it under the terms of the GNU Affero General Public License as
 published by the Free Software Foundation, either version 3 of the
 License, or (at your option) any later version.
 */
-import { ImageIcon, Loader2, Sparkles, Trash2 } from 'lucide-react'
+import {
+  History,
+  ImageIcon,
+  Loader2,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -30,6 +37,14 @@ import {
   getUserGroups,
   getUserModels,
 } from './api'
+import {
+  appendDrawingHistory,
+  clearDrawingHistory,
+  historyItemToGenerated,
+  loadDrawingHistory,
+  removeDrawingHistoryItem,
+  type DrawingHistoryItem,
+} from './history'
 import {
   DEFAULT_IMAGE_MODEL,
   RESPONSE_BASE_MODELS,
@@ -55,6 +70,11 @@ export function DrawingPage() {
   ])
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<GeneratedImage[]>([])
+  const [history, setHistory] = useState<DrawingHistoryItem[]>([])
+
+  useEffect(() => {
+    setHistory(loadDrawingHistory())
+  }, [])
 
   useEffect(() => {
     void (async () => {
@@ -106,10 +126,25 @@ export function DrawingPage() {
     [size]
   )
 
+  const persistSuccess = useCallback(
+    (imgs: GeneratedImage[], text: string) => {
+      const next = appendDrawingHistory(imgs, {
+        prompt: text,
+        group: group || undefined,
+      })
+      setHistory(next)
+    },
+    [group]
+  )
+
   const handleGenerate = useCallback(async () => {
     const text = prompt.trim()
     if (!text) {
       toast.warning(t('请输入提示词'))
+      return
+    }
+    if (!group) {
+      toast.warning(t('请选择分组'))
       return
     }
     setLoading(true)
@@ -120,7 +155,7 @@ export function DrawingPage() {
           model: DEFAULT_IMAGE_MODEL,
           prompt: text,
           size,
-          group: group || undefined,
+          group,
           n: 1,
         })
         if (res.error?.message) {
@@ -162,13 +197,14 @@ export function DrawingPage() {
         } else {
           toast.success(t('生成成功'))
           setResults((prev) => [...imgs, ...prev])
+          persistSuccess(imgs, text)
         }
       } else {
         const res = await generateViaResponsesTool({
           chatModel,
           prompt: text,
           size,
-          group: group || undefined,
+          group,
         })
         if (res.error) {
           toast.error(res.error)
@@ -209,6 +245,7 @@ export function DrawingPage() {
         } else {
           toast.success(t('生成成功'))
           setResults((prev) => [...imgs, ...prev])
+          persistSuccess(imgs, text)
         }
       }
     } catch (err) {
@@ -221,7 +258,29 @@ export function DrawingPage() {
     } finally {
       setLoading(false)
     }
-  }, [prompt, mode, size, group, chatModel, t])
+  }, [prompt, mode, size, group, chatModel, t, persistSuccess])
+
+  const handleClearSession = useCallback(() => {
+    setResults([])
+  }, [])
+
+  const handleClearHistory = useCallback(() => {
+    setHistory(clearDrawingHistory())
+    toast.success(t('已清空本机历史'))
+  }, [t])
+
+  const handleRemoveHistory = useCallback((id: string) => {
+    setHistory(removeDrawingHistoryItem(id))
+  }, [])
+
+  const handleRestoreHistory = useCallback((item: DrawingHistoryItem) => {
+    const gen = historyItemToGenerated(item)
+    setResults((prev) => {
+      if (prev.some((x) => x.id === gen.id)) return prev
+      return [gen, ...prev]
+    })
+    if (item.prompt) setPrompt(item.prompt)
+  }, [])
 
   return (
     <div className='mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6'>
@@ -375,11 +434,11 @@ export function DrawingPage() {
               type='button'
               variant='outline'
               disabled={results.length === 0}
-              onClick={() => setResults([])}
+              onClick={handleClearSession}
               className='gap-2'
             >
               <Trash2 className='size-4' />
-              {t('清空结果')}
+              {t('清空本次')}
             </Button>
           </div>
         </div>
@@ -433,6 +492,99 @@ export function DrawingPage() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className='border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm'>
+        <div className='flex flex-wrap items-center justify-between gap-2'>
+          <div className='flex items-center gap-2'>
+            <History className='text-primary size-4' />
+            <h2 className='text-sm font-semibold'>{t('本机生成历史')}</h2>
+            <span className='text-muted-foreground text-xs'>
+              {history.length} {t('条')}
+            </span>
+          </div>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            disabled={history.length === 0}
+            onClick={handleClearHistory}
+            className='gap-1.5'
+          >
+            <Trash2 className='size-3.5' />
+            {t('清空历史')}
+          </Button>
+        </div>
+        <p className='text-muted-foreground text-xs leading-5'>
+          {t(
+            '历史仅保存在当前浏览器本地（不上传服务器）。换设备或清站点数据会丢失；可随时单条删除或全部清空。'
+          )}
+        </p>
+
+        {history.length === 0 ? (
+          <div className='text-muted-foreground flex min-h-[120px] flex-col items-center justify-center gap-1 text-center text-sm'>
+            <p>{t('暂无历史记录。生成成功后会自动写入本机。')}</p>
+          </div>
+        ) : (
+          <div className='grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
+            {history.map((item) => {
+              const src =
+                item.url ||
+                (item.b64
+                  ? item.b64.startsWith('data:')
+                    ? item.b64
+                    : `data:image/png;base64,${item.b64}`
+                  : '')
+              return (
+                <div
+                  key={item.id}
+                  className='group relative overflow-hidden rounded-lg border'
+                >
+                  {src ? (
+                    <button
+                      type='button'
+                      className='block w-full text-left'
+                      onClick={() => handleRestoreHistory(item)}
+                      title={t('点此恢复到上方结果区')}
+                    >
+                      <img
+                        src={src}
+                        alt={item.revisedPrompt || item.prompt || item.model}
+                        className='bg-muted aspect-square w-full object-cover'
+                      />
+                    </button>
+                  ) : (
+                    <div className='bg-muted text-muted-foreground flex aspect-square items-center justify-center p-2 text-center text-xs'>
+                      {t('图片过大已省略预览')}
+                    </div>
+                  )}
+                  <button
+                    type='button'
+                    className='bg-background/90 absolute top-1.5 right-1.5 rounded-full border p-1 opacity-80 shadow-sm transition hover:opacity-100'
+                    onClick={() => handleRemoveHistory(item.id)}
+                    title={t('删除此条')}
+                  >
+                    <X className='size-3.5' />
+                  </button>
+                  <div className='space-y-0.5 p-2 text-[11px] leading-4'>
+                    <div className='text-muted-foreground truncate'>
+                      {item.model}
+                      {item.group ? ` · ${item.group}` : ''} · {item.size}
+                    </div>
+                    {(item.prompt || item.revisedPrompt) && (
+                      <div className='line-clamp-2'>
+                        {item.prompt || item.revisedPrompt}
+                      </div>
+                    )}
+                    <div className='text-muted-foreground'>
+                      {new Date(item.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
