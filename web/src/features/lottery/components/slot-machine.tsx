@@ -24,9 +24,9 @@ interface SlotMachineProps {
 
 const CELL = 88
 /** Idle drift speeds (px/frame @ ~60fps) — slow, independent per reel */
-const IDLE_SPEEDS = [0.45, 0.68, 0.52]
-/** Fast free-spin speeds while waiting for the server */
-const SPIN_SPEEDS = [16, 19, 22]
+const IDLE_SPEEDS = [0.10, 0.15, 0.12]
+/** Draw free-spin speeds — only slightly faster than idle */
+const SPIN_SPEEDS = [0.35, 0.48, 0.40]
 
 function wrapY(v: number): number {
   const loop = PRIZE_ORDER.length * CELL
@@ -39,7 +39,7 @@ function wrapY(v: number): number {
 /**
  * CSS 3-reel slot machine. All reels land on the same prize tier for clarity.
  * Idle (!spinning): three reels drift slowly and independently.
- * Free-spin (spinning, no target): fast independent roll.
+ * Free-spin (spinning, no target): slightly faster independent roll.
  * Settle (spinning + target): ease to the result, then back to idle.
  */
 export function SlotMachine({
