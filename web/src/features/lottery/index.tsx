@@ -236,30 +236,58 @@ export function LotteryPage() {
                   highlight={highlight}
                 />
 
-                <div className='flex flex-wrap justify-center gap-3'>
+                <div className='flex flex-wrap items-stretch justify-center gap-3'>
                   <Button
                     size='lg'
+                    className='min-w-[9.5rem] flex-col gap-0.5 py-2 h-auto'
                     disabled={drawing || spinning || !status.can_single}
                     onClick={() => void handleDraw('single')}
                   >
-                    <Sparkles className='mr-1 h-4 w-4' />
-                    {t('单抽')} ({status.single_cost})
+                    <span className='inline-flex items-center'>
+                      <Sparkles className='mr-1 h-4 w-4' />
+                      {t('单抽')}
+                    </span>
+                    <span className='text-[11px] font-normal opacity-90'>
+                      {t('消耗')} {status.single_cost} {t('额度')} · 1{t('抽')}
+                    </span>
                   </Button>
-                  <Button
-                    size='lg'
-                    variant='secondary'
-                    disabled={drawing || spinning || !status.can_multi}
-                    onClick={() => void handleDraw('multi')}
-                  >
-                    {t('十连')} ({status.multi_cost} / {status.multi_draws}
-                    {t('抽')})
-                  </Button>
+                  <div className='relative'>
+                    <Button
+                      size='lg'
+                      variant='secondary'
+                      className='min-w-[11rem] flex-col gap-0.5 py-2 h-auto'
+                      disabled={drawing || spinning || !status.can_multi}
+                      onClick={() => void handleDraw('multi')}
+                    >
+                      <span className='font-semibold'>{t('十连')}</span>
+                      <span className='text-[11px] font-normal opacity-90'>
+                        {t('消耗')}{' '}
+                        <span className='font-semibold text-amber-600 dark:text-amber-400'>
+                          {status.multi_cost}
+                        </span>{' '}
+                        {t('额度')} · {status.multi_draws}
+                        {t('抽')}
+                      </span>
+                    </Button>
+                    <span className='pointer-events-none absolute -top-2 -right-2 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow'>
+                      {t('省')}2
+                    </span>
+                  </div>
                 </div>
-                <p className='text-muted-foreground text-center text-xs'>
-                  {t(
-                    '十连需今日未抽过（剩余 ≥10）。以到账为准；动画中断不退款。'
-                  )}
-                </p>
+                <div className='space-y-1 text-center text-xs'>
+                  <p className='text-amber-700 dark:text-amber-300 font-medium'>
+                    {t('十连只需消耗')} {status.multi_cost} {t('额度')}
+                    {t('（原价')} {status.multi_draws}
+                    {t('额度，立省')}{' '}
+                    {(status.multi_draws - status.multi_cost).toFixed(0)}
+                    {t('额度）')}
+                  </p>
+                  <p className='text-muted-foreground'>
+                    {t(
+                      '十连需今日未抽过（剩余 ≥10）。以到账为准；动画中断不退款。'
+                    )}
+                  </p>
+                </div>
 
                 {lastResult && (
                   <div className='rounded-xl border bg-muted/30 p-3'>
