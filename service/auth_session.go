@@ -65,12 +65,26 @@ func createLoginSession(userID int, expectedAuthVersion int64, loginMethod, ip, 
 		return nil, ErrLoginSessionRevoked
 	}
 	now := time.Now().Unix()
+	// When the user already has the maximum number of active dashboard sessions
+	// (default 50, TTL 30d), automatically revoke the least-recently-active ones
+	// so a legitimate new login is not permanently blocked. Profile "access token"
+	// is a separate system credential and cannot replace browser login sessions.
 	activeCount, err := model.CountActiveUserSessions(userID, now)
 	if err != nil {
 		return nil, err
 	}
-	if activeCount >= int64(common.UserSessionActiveLimit) {
-		return nil, model.ErrUserSessionLimit
+	for activeCount >= int64(common.UserSessionActiveLimit) {
+		revoked, revokeErr := model.RevokeOldestActiveUserSessions(userID, common.UserSessionActiveLimit-1, "active_limit_eviction")
+		if revokeErr != nil {
+			return nil, revokeErr
+		}
+		if revoked == 0 {
+			return nil, model.ErrUserSessionLimit
+		}
+		activeCount, err = model.CountActiveUserSessions(userID, now)
+		if err != nil {
+			return nil, err
+		}
 	}
 	issuanceCount, err := model.CountUserSessionsCreatedSince(userID, now-common.UserSessionIssuanceWindowSeconds)
 	if err != nil {

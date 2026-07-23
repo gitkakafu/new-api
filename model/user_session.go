@@ -701,6 +701,94 @@ func AdvanceUserSessionAuthVersion(userID int, sid string, expectedSessionVersio
 	return &session, nil
 }
 
+// RevokeOldestActiveUserSessions revokes the least recently active sessions
+// until the number of remaining active sessions is at most keepLimit.
+// Sessions are ordered by last_active_at, then created_at, then sid.
+// When keepLimit <= 0, all active sessions for the user are revoked.
+func RevokeOldestActiveUserSessions(userID int, keepLimit int, reason string) (int64, error) {
+	if userID <= 0 {
+		return 0, ErrUserSessionInvalid
+	}
+	if keepLimit < 0 {
+		keepLimit = 0
+	}
+	if strings.TrimSpace(reason) == "" {
+		reason = "active_limit_eviction"
+	}
+	now := time.Now().Unix()
+	var totalAffected int64
+	for {
+		var activeCount int64
+		if err := DB.Model(&UserSession{}).
+			Where("user_id = ? AND status = ? AND expires_at > ?", userID, UserSessionStatusActive, now).
+			Count(&activeCount).Error; err != nil {
+			return totalAffected, err
+		}
+		if activeCount <= int64(keepLimit) {
+			return totalAffected, nil
+		}
+		need := int(activeCount - int64(keepLimit))
+		if need > userSessionRevokeBatchSize {
+			need = userSessionRevokeBatchSize
+		}
+		var candidates []UserSession
+		if err := DB.Where("user_id = ? AND status = ? AND expires_at > ?", userID, UserSessionStatusActive, now).
+			Order("last_active_at ASC, created_at ASC, sid ASC").
+			Limit(need).
+			Find(&candidates).Error; err != nil {
+			return totalAffected, err
+		}
+		if len(candidates) == 0 {
+			return totalAffected, nil
+		}
+		for i := range candidates {
+			if err := writeUserSessionDenyFence(&candidates[i], UserSessionStatusRevoking, now, reason); err != nil {
+				return totalAffected, err
+			}
+		}
+		sids := make([]string, 0, len(candidates))
+		for i := range candidates {
+			sids = append(sids, candidates[i].SID)
+		}
+		var affected int64
+		var revoked []UserSession
+		err := DB.Transaction(func(tx *gorm.DB) error {
+			if err := lockForUpdate(tx).Where("sid IN ? AND status = ?", sids, UserSessionStatusActive).Find(&revoked).Error; err != nil {
+				return err
+			}
+			if len(revoked) == 0 {
+				return nil
+			}
+			lockedSIDs := make([]string, 0, len(revoked))
+			for i := range revoked {
+				lockedSIDs = append(lockedSIDs, revoked[i].SID)
+			}
+			result := tx.Model(&UserSession{}).Where("sid IN ? AND status = ?", lockedSIDs, UserSessionStatusActive).Updates(map[string]interface{}{
+				"status":         UserSessionStatusRevoked,
+				"revoked_at":     now,
+				"revoked_reason": reason,
+			})
+			affected = result.RowsAffected
+			return result.Error
+		})
+		if err != nil {
+			return totalAffected, err
+		}
+		totalAffected += affected
+		for i := range revoked {
+			revoked[i].Status = UserSessionStatusRevoked
+			revoked[i].RevokedAt = now
+			revoked[i].RevokedReason = reason
+			if err := writeUserSessionCache(revoked[i].cacheEntry(), time.Time{}); err != nil {
+				common.SysLog("failed to finalize oldest user session revoke tombstone: " + err.Error())
+			}
+		}
+		if affected == 0 {
+			continue
+		}
+	}
+}
+
 func RevokeOtherUserSessions(userID int, currentSID, reason string) (int64, error) {
 	return revokeUserSessions(userID, currentSID, reason)
 }

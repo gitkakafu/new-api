@@ -45,6 +45,7 @@ import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authen
 import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_authenticated/playground/index'
 import { Route as AuthenticatedDrawingIndexRouteImport } from './routes/_authenticated/drawing/index'
 import { Route as AuthenticatedLotteryIndexRouteImport } from './routes/_authenticated/lottery/index'
+import { Route as AuthenticatedAnnouncementsIndexRouteImport } from './routes/_authenticated/announcements/index'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
@@ -258,6 +259,12 @@ const AuthenticatedLotteryIndexRoute =
     path: '/lottery/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAnnouncementsIndexRoute =
+  AuthenticatedAnnouncementsIndexRouteImport.update({
+    id: '/announcements/',
+    path: '/announcements/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProfileIndexRoute =
   AuthenticatedProfileIndexRouteImport.update({
     id: '/profile/',
@@ -437,6 +444,7 @@ export interface FileRoutesByFullPath {
   '/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/drawing/': typeof AuthenticatedDrawingIndexRoute
   '/lottery/': typeof AuthenticatedLotteryIndexRoute
+  '/announcements/': typeof AuthenticatedAnnouncementsIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
@@ -496,6 +504,7 @@ export interface FileRoutesByTo {
   '/playground': typeof AuthenticatedPlaygroundIndexRoute
   '/drawing': typeof AuthenticatedDrawingIndexRoute
   '/lottery': typeof AuthenticatedLotteryIndexRoute
+  '/announcements': typeof AuthenticatedAnnouncementsIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes': typeof AuthenticatedRedemptionCodesIndexRoute
   '/subscriptions': typeof AuthenticatedSubscriptionsIndexRoute
@@ -559,6 +568,7 @@ export interface FileRoutesById {
   '/_authenticated/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/_authenticated/drawing/': typeof AuthenticatedDrawingIndexRoute
   '/_authenticated/lottery/': typeof AuthenticatedLotteryIndexRoute
+  '/_authenticated/announcements/': typeof AuthenticatedAnnouncementsIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
   '/_authenticated/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/_authenticated/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
@@ -621,6 +631,7 @@ export interface FileRouteTypes {
     | '/playground/'
     | '/drawing/'
     | '/lottery/'
+    | '/announcements/'
     | '/profile/'
     | '/redemption-codes/'
     | '/subscriptions/'
@@ -680,6 +691,7 @@ export interface FileRouteTypes {
     | '/playground'
     | '/drawing'
     | '/lottery'
+    | '/announcements'
     | '/profile'
     | '/redemption-codes'
     | '/subscriptions'
@@ -742,6 +754,7 @@ export interface FileRouteTypes {
     | '/_authenticated/playground/'
     | '/_authenticated/drawing/'
     | '/_authenticated/lottery/'
+    | '/_authenticated/announcements/'
     | '/_authenticated/profile/'
     | '/_authenticated/redemption-codes/'
     | '/_authenticated/subscriptions/'
@@ -1040,6 +1053,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLotteryIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/announcements/': {
+      id: '/_authenticated/announcements/'
+      path: '/announcements'
+      fullPath: '/announcements/'
+      preLoaderRoute: typeof AuthenticatedAnnouncementsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profile/': {
       id: '/_authenticated/profile/'
       path: '/profile'
@@ -1309,6 +1329,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPlaygroundIndexRoute: typeof AuthenticatedPlaygroundIndexRoute
   AuthenticatedDrawingIndexRoute: typeof AuthenticatedDrawingIndexRoute
   AuthenticatedLotteryIndexRoute: typeof AuthenticatedLotteryIndexRoute
+  AuthenticatedAnnouncementsIndexRoute: typeof AuthenticatedAnnouncementsIndexRoute
   AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
   AuthenticatedRedemptionCodesIndexRoute: typeof AuthenticatedRedemptionCodesIndexRoute
   AuthenticatedSubscriptionsIndexRoute: typeof AuthenticatedSubscriptionsIndexRoute
@@ -1334,6 +1355,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPlaygroundIndexRoute: AuthenticatedPlaygroundIndexRoute,
   AuthenticatedDrawingIndexRoute: AuthenticatedDrawingIndexRoute,
   AuthenticatedLotteryIndexRoute: AuthenticatedLotteryIndexRoute,
+  AuthenticatedAnnouncementsIndexRoute: AuthenticatedAnnouncementsIndexRoute,
   AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
   AuthenticatedRedemptionCodesIndexRoute:
     AuthenticatedRedemptionCodesIndexRoute,
@@ -1368,3 +1390,4 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+

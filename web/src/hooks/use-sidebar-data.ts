@@ -26,6 +26,7 @@ import {
   Key,
   LayoutDashboard,
   ListTodo,
+  Megaphone,
   Radio,
   ServerCog,
   Settings,
@@ -69,6 +70,11 @@ export function useSidebarData(): SidebarData {
             title: t('Overview'),
             url: '/dashboard/overview',
             icon: Activity,
+          },
+          {
+            title: t('Announcements'),
+            url: '/announcements',
+            icon: Megaphone,
           },
           {
             title: t('Dashboard'),
@@ -161,3 +167,4 @@ export function useSidebarData(): SidebarData {
     ],
   }
 }
+
