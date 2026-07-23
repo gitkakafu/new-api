@@ -124,9 +124,12 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/checkin", controller.GetCheckinStatus)
 				selfRoute.POST("/checkin", middleware.TurnstileCheck(), controller.DoCheckin)
 
-				// Balance lottery routes
+				// Balance lottery routes.
+				// Do NOT share CriticalRateLimit with login/refresh: rapid draws would
+				// exhaust the CT bucket (20/20m per IP) and then starve auth/refresh.
+				// Abuse is bounded by daily_draw_limit + per-user quota cost.
 				selfRoute.GET("/lottery/status", controller.GetLotteryStatus)
-				selfRoute.POST("/lottery/draw", middleware.CriticalRateLimit(), controller.DoLotteryDraw)
+				selfRoute.POST("/lottery/draw", controller.DoLotteryDraw)
 				selfRoute.GET("/lottery/history", controller.GetLotteryHistory)
 				selfRoute.GET("/lottery/public-wins", controller.GetLotteryPublicWins)
 

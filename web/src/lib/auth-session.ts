@@ -39,6 +39,8 @@ export interface AuthRefreshHTTPResponse {
   status: number
   data?: unknown
   error?: unknown
+  /** Seconds from Retry-After when the server rate-limited the refresh. */
+  retryAfterSeconds?: number
 }
 
 export interface AuthRefreshRuntime {
@@ -48,6 +50,8 @@ export interface AuthRefreshRuntime {
   acceptBundle: (bundle: AuthBundle) => void
   clear: (synchronizeTabs: boolean, bootstrapState?: AuthBootstrapState) => void
   markTransient: () => void
+  /** Optional: suppress further refresh network calls for a while (429). */
+  markRateLimited?: (retryAfterSeconds?: number) => void
   wait: (delay: number) => Promise<void>
   isCurrent?: () => boolean
 }
@@ -75,8 +79,37 @@ const authClient = axios.create({
 })
 
 const refreshRaceDelays = [80, 200, 500] as const
+/** Default client cooldown when /auth/refresh returns 429 without Retry-After. */
+const DEFAULT_REFRESH_COOLDOWN_MS = 15_000
+const MAX_REFRESH_COOLDOWN_MS = 120_000
 let refreshPromise: Promise<RefreshOutcome> | null = null
 let authEpoch = 0
+/** Epoch ms until which refreshAuthentication must not hit the network. */
+let refreshCooldownUntil = 0
+
+function parseRetryAfterSeconds(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return Math.floor(value)
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const asInt = Number.parseInt(value, 10)
+    if (Number.isFinite(asInt) && asInt > 0) return asInt
+  }
+  return undefined
+}
+
+function markRefreshRateLimited(retryAfterSeconds?: number): void {
+  const seconds =
+    retryAfterSeconds && retryAfterSeconds > 0 ? retryAfterSeconds : 15
+  const ms = Math.min(
+    Math.max(seconds, 1) * 1000,
+    MAX_REFRESH_COOLDOWN_MS
+  )
+  const until = Date.now() + (ms || DEFAULT_REFRESH_COOLDOWN_MS)
+  if (until > refreshCooldownUntil) {
+    refreshCooldownUntil = until
+  }
+}
 
 class AuthRefreshSupersededError extends Error {
   constructor() {
@@ -253,7 +286,16 @@ export function createRefreshRunner(
       return { kind: 'anonymous' }
     }
 
-    if (!response.status || response.status >= 500 || response.status === 429) {
+    if (response.status === 429) {
+      runtime.markRateLimited?.(response.retryAfterSeconds)
+      runtime.markTransient()
+      return {
+        kind: 'transient_error',
+        error: response.error ?? response.data,
+      }
+    }
+
+    if (!response.status || response.status >= 500) {
       runtime.markTransient()
       return {
         kind: 'transient_error',
@@ -285,10 +327,18 @@ async function requestRefresh(
     return { status: response.status, data: response.data }
   } catch (error: unknown) {
     if (!axios.isAxiosError(error)) return { status: 0, error }
+    const retryAfterSeconds = parseRetryAfterSeconds(
+      error.response?.headers?.['retry-after'] ??
+        error.response?.headers?.['Retry-After']
+    )
+    if (error.response?.status === 429) {
+      markRefreshRateLimited(retryAfterSeconds)
+    }
     return {
       status: error.response?.status ?? 0,
       data: error.response?.data,
       error,
+      retryAfterSeconds,
     }
   }
 }
@@ -307,6 +357,7 @@ function runRefresh(refreshEpoch: number): Promise<RefreshOutcome> {
       clearAuthentication(synchronizeTabs, bootstrapState)
     },
     markTransient: () => useAuthStore.getState().auth.setBootstrapState('idle'),
+    markRateLimited: markRefreshRateLimited,
     wait: waitForRefreshRace,
     isCurrent: () => authEpoch === refreshEpoch,
   })()
@@ -331,6 +382,16 @@ async function performRefreshWithBrowserLock(
 }
 
 export function refreshAuthentication(): Promise<RefreshOutcome> {
+  // After a 429, stop hammering /auth/refresh (shared CriticalRateLimit bucket
+  // was historically exhausted by lottery draws; still useful as a client brake).
+  if (Date.now() < refreshCooldownUntil) {
+    useAuthStore.getState().auth.setBootstrapState('idle')
+    return Promise.resolve({
+      kind: 'transient_error',
+      error: new Error('Authentication refresh is cooling down after rate limit'),
+    })
+  }
+
   if (!refreshPromise) {
     const refreshEpoch = authEpoch
     refreshPromise = performRefreshWithBrowserLock(refreshEpoch).finally(() => {
