@@ -23,10 +23,24 @@ interface SlotMachineProps {
 }
 
 const CELL = 88
+/** Idle drift speeds (px/frame @ ~60fps) — slow, independent per reel */
+const IDLE_SPEEDS = [0.45, 0.68, 0.52]
+/** Fast free-spin speeds while waiting for the server */
+const SPIN_SPEEDS = [16, 19, 22]
+
+function wrapY(v: number): number {
+  const loop = PRIZE_ORDER.length * CELL
+  // strip has 4 copies; keep translate within middle range
+  while (v < -loop * 3) v += loop
+  while (v > 0) v -= loop
+  return v
+}
 
 /**
  * CSS 3-reel slot machine. All reels land on the same prize tier for clarity.
- * Free-spins until `targetIndex` is set, then eases to the result.
+ * Idle (!spinning): three reels drift slowly and independently.
+ * Free-spin (spinning, no target): fast independent roll.
+ * Settle (spinning + target): ease to the result, then back to idle.
  */
 export function SlotMachine({
   targetIndex,
@@ -40,62 +54,81 @@ export function SlotMachine({
     () => [...PRIZE_ORDER, ...PRIZE_ORDER, ...PRIZE_ORDER, ...PRIZE_ORDER],
     []
   )
-  const [offsets, setOffsets] = useState([0, 0, 0])
+  // Staggered starts so idle never shows three identical faces
+  const [offsets, setOffsets] = useState(() => [
+    0,
+    -CELL * 2 - 18,
+    -CELL * 5 - 10,
+  ])
   const [settling, setSettling] = useState(false)
   const onEndRef = useRef(onSpinEnd)
   onEndRef.current = onSpinEnd
   const rafRef = useRef(0)
-  const yRef = useRef([0, -12, -24])
+  const yRef = useRef([0, -CELL * 2 - 18, -CELL * 5 - 10])
 
-  // Free spin while waiting for server
+  // Continuous reel motion owner (idle + free-spin). Settle uses CSS transition.
   useEffect(() => {
-    if (!spinning || targetIndex != null) {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    // Settling to target — pause RAF; settle effect drives offsets
+    if (spinning && targetIndex != null) {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = 0
+      }
       return
     }
+
     setSettling(false)
+
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    // Idle + reduced motion: staggered static faces (not three lazy sheep)
+    if (!spinning && reduced) {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = 0
+      }
+      const staticY = [0, -CELL * 2 - 18, -CELL * 5 - 10]
+      yRef.current = staticY
+      setOffsets(staticY)
+      return
+    }
+
+    const speeds = spinning ? SPIN_SPEEDS : IDLE_SPEEDS
     const tick = () => {
-      yRef.current = yRef.current.map((v, i) => v - (16 + i * 3))
-      // keep offsets in a reasonable range
-      yRef.current = yRef.current.map((v) => {
-        const loop = PRIZE_ORDER.length * CELL
-        if (v < -loop * 3) return v + loop
-        return v
-      })
+      yRef.current = yRef.current.map((v, i) => wrapY(v - speeds[i]))
       setOffsets([...yRef.current])
       rafRef.current = requestAnimationFrame(tick)
     }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(tick)
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = 0
+      }
     }
   }, [spinning, targetIndex])
 
-  // Settle when target arrives
+  // Settle when target arrives during a spin
   useEffect(() => {
     if (!spinning || targetIndex == null) return
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = 0
+    }
     setSettling(true)
     const landBase = -(PRIZE_ORDER.length * 2 + targetIndex) * CELL
+    // Slight per-reel offset during ease so they don't look glued
     const lands = [landBase, landBase - 4, landBase + 4]
     yRef.current = lands
-    // force reflow-friendly update next frame
     requestAnimationFrame(() => setOffsets(lands))
     const t = window.setTimeout(() => {
       onEndRef.current?.()
     }, durationMs + 120)
     return () => window.clearTimeout(t)
   }, [spinning, targetIndex, durationMs])
-
-  // idle face: show first prize row
-  useEffect(() => {
-    if (spinning) return
-    if (targetIndex == null) {
-      setSettling(false)
-      setOffsets([0, 0, 0])
-      yRef.current = [0, 0, 0]
-    }
-  }, [spinning, targetIndex])
 
   return (
     <div
