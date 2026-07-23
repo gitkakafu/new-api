@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { useState, useEffect, useMemo } from 'react'
+import { type ComponentType, useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -27,11 +27,25 @@ import { ComboboxInput } from '@/components/ui/combobox-input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { getUserModels } from '@/lib/api'
+import { cn } from '@/lib/utils'
+
+import {
+  ClaudeAppIcon,
+  CodexAppIcon,
+  GeminiAppIcon,
+  GrokBuildAppIcon,
+} from './cc-switch-app-icons'
+
+type AppIconProps = { size?: number; className?: string }
+
+/** Apps that need OpenAI-compatible `/v1` base URL in CCS deeplink. */
+const V1_ENDPOINT_APPS = new Set(['codex', 'grokbuild'])
 
 const APP_CONFIGS = {
   claude: {
     label: 'Claude',
     defaultName: '我的 Claude',
+    icon: ClaudeAppIcon as ComponentType<AppIconProps>,
     modelFields: [
       { key: 'model', labelKey: '主模型', required: true },
       { key: 'haikuModel', labelKey: 'Haiku 模型', required: false },
@@ -42,11 +56,20 @@ const APP_CONFIGS = {
   codex: {
     label: 'Codex',
     defaultName: '我的 Codex',
+    icon: CodexAppIcon as ComponentType<AppIconProps>,
     modelFields: [{ key: 'model', labelKey: '主模型', required: true }],
   },
   gemini: {
     label: 'Gemini',
     defaultName: '我的 Gemini',
+    icon: GeminiAppIcon as ComponentType<AppIconProps>,
+    modelFields: [{ key: 'model', labelKey: '主模型', required: true }],
+  },
+  /** CCS app id is `grokbuild` (see cc-switch deeplink parser). */
+  grokbuild: {
+    label: 'Grok Build',
+    defaultName: '我的 Grok Build',
+    icon: GrokBuildAppIcon as ComponentType<AppIconProps>,
     modelFields: [{ key: 'model', labelKey: '主模型', required: true }],
   },
 } as const
@@ -73,7 +96,9 @@ function buildCCSwitchURL(
   apiKey: string
 ): string {
   const serverAddress = getServerAddress()
-  const endpoint = app === 'codex' ? serverAddress + '/v1' : serverAddress
+  const endpoint = V1_ENDPOINT_APPS.has(app)
+    ? serverAddress + '/v1'
+    : serverAddress
   const params = new URLSearchParams()
   params.set('resource', 'provider')
   params.set('app', app)
@@ -175,21 +200,32 @@ export function CCSwitchDialog(props: Props) {
           <RadioGroup
             value={app}
             onValueChange={handleAppChange}
-            className='flex gap-4'
+            className='grid grid-cols-2 gap-2 sm:grid-cols-2'
           >
             {(
               Object.entries(APP_CONFIGS) as [
                 AppType,
                 (typeof APP_CONFIGS)[AppType],
               ][]
-            ).map(([key, cfg]) => (
-              <div key={key} className='flex items-center gap-2'>
-                <RadioGroupItem value={key} id={`app-${key}`} />
-                <Label htmlFor={`app-${key}`} className='cursor-pointer'>
-                  {cfg.label}
+            ).map(([key, cfg]) => {
+              const Icon = cfg.icon
+              const selected = app === key
+              return (
+                <Label
+                  key={key}
+                  htmlFor={`app-${key}`}
+                  className={cn(
+                    'border-input hover:bg-accent/50 flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-normal transition-colors',
+                    selected &&
+                      'border-primary bg-primary/5 ring-primary/20 ring-1'
+                  )}
+                >
+                  <RadioGroupItem value={key} id={`app-${key}`} />
+                  <Icon size={18} className='size-[18px]' />
+                  <span>{cfg.label}</span>
                 </Label>
-              </div>
-            ))}
+              )
+            })}
           </RadioGroup>
         </div>
 
