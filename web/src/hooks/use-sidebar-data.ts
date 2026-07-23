@@ -20,6 +20,7 @@ import {
   Activity,
   Box,
   CreditCard,
+  Dices,
   FileText,
   Image as ImageIcon,
   Key,
@@ -101,6 +102,11 @@ export function useSidebarData(): SidebarData {
             title: t('Wallet'),
             url: '/wallet',
             icon: Wallet,
+          },
+          {
+            title: t('抽奖'),
+            url: '/lottery',
+            icon: Dices,
           },
           {
             title: t('Profile'),
