@@ -80,6 +80,7 @@ export function LotteryPage() {
   const onSpinEnd = useCallback(() => {
     setSpinning(false)
     setDrawing(false)
+    setTargetIndex(null)
     const result = pendingRef.current
     if (!result) return
     setLastResult(result)

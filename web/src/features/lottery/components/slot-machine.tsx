@@ -24,23 +24,57 @@ interface SlotMachineProps {
 
 const CELL = 88
 /** Idle drift speeds (px/frame @ ~60fps) — slow, independent per reel */
-const IDLE_SPEEDS = [0.10, 0.15, 0.12]
+const IDLE_SPEEDS = [0.1, 0.15, 0.12]
 /** Draw free-spin speeds — only slightly faster than idle */
-const SPIN_SPEEDS = [0.35, 0.48, 0.40]
+const SPIN_SPEEDS = [0.35, 0.48, 0.4]
+/** Strip repeats — must cover free-spin wrap + settle min-travel */
+const STRIP_COPIES = 10
+/** Minimum full prize-cycles the settle animation always travels (every spin) */
+const SETTLE_MIN_SPINS = 3
 
+function loopHeight(): number {
+  return PRIZE_ORDER.length * CELL
+}
+
+/**
+ * Keep free-spin offsets in a mid-band of the long strip so we never
+ * paint empty cells, and still have room to settle further downward.
+ */
 function wrapY(v: number): number {
-  const loop = PRIZE_ORDER.length * CELL
-  // strip has 4 copies; keep translate within middle range
-  while (v < -loop * 3) v += loop
-  while (v > 0) v -= loop
+  const loop = loopHeight()
+  // Keep in (-4*loop, -loop] roughly so settle can still travel 3+ loops
+  while (v <= -4 * loop) v += loop
+  while (v > -loop) v -= loop
   return v
+}
+
+/**
+ * Land offset for `targetIndex` that is always at least `minSpins` full
+ * cycles *below* the current Y. Prevents 2nd+ draws from barely moving
+ * (or scrolling the wrong way) when already near a congruent land.
+ */
+function landOffset(
+  currentY: number,
+  targetIndex: number,
+  reel: number,
+  minSpins = SETTLE_MIN_SPINS
+): number {
+  const loop = loopHeight()
+  const targetInCycle = -targetIndex * CELL
+  // land = targetInCycle - k*loop  (k >= 0), with land <= currentY - minSpins*loop - stagger
+  const stagger = reel * 6
+  const floor = currentY - minSpins * loop - stagger
+  // k such that targetInCycle - k*loop <= floor  →  k >= (targetInCycle - floor) / loop
+  let k = Math.ceil((targetInCycle - floor) / loop)
+  if (k < minSpins) k = minSpins
+  return targetInCycle - k * loop
 }
 
 /**
  * CSS 3-reel slot machine. All reels land on the same prize tier for clarity.
  * Idle (!spinning): three reels drift slowly and independently.
  * Free-spin (spinning, no target): slightly faster independent roll.
- * Settle (spinning + target): ease to the result, then back to idle.
+ * Settle (spinning + target): always ease downward several cycles to the result.
  */
 export function SlotMachine({
   targetIndex,
@@ -50,21 +84,25 @@ export function SlotMachine({
   onSpinEnd,
   highlight,
 }: SlotMachineProps) {
-  const strip = useMemo(
-    () => [...PRIZE_ORDER, ...PRIZE_ORDER, ...PRIZE_ORDER, ...PRIZE_ORDER],
-    []
-  )
+  const strip = useMemo(() => {
+    const one = [...PRIZE_ORDER]
+    const out: number[] = []
+    for (let c = 0; c < STRIP_COPIES; c++) out.push(...one)
+    return out
+  }, [])
+
   // Staggered starts so idle never shows three identical faces
   const [offsets, setOffsets] = useState(() => [
-    0,
-    -CELL * 2 - 18,
-    -CELL * 5 - 10,
+    -loopHeight(),
+    -loopHeight() * 2 - 18,
+    -loopHeight() * 3 - 10,
   ])
   const [settling, setSettling] = useState(false)
   const onEndRef = useRef(onSpinEnd)
   onEndRef.current = onSpinEnd
   const rafRef = useRef(0)
-  const yRef = useRef([0, -CELL * 2 - 18, -CELL * 5 - 10])
+  const yRef = useRef([-loopHeight(), -loopHeight() * 2 - 18, -loopHeight() * 3 - 10])
+  const settleTimerRef = useRef(0)
 
   // Continuous reel motion owner (idle + free-spin). Settle uses CSS transition.
   useEffect(() => {
@@ -77,19 +115,24 @@ export function SlotMachine({
       return
     }
 
+    // Leaving settle / entering idle or free-spin: drop CSS transition
     setSettling(false)
 
     const reduced =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    // Idle + reduced motion: staggered static faces (not three lazy sheep)
+    // Idle + reduced motion: staggered static faces
     if (!spinning && reduced) {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current)
         rafRef.current = 0
       }
-      const staticY = [0, -CELL * 2 - 18, -CELL * 5 - 10]
+      const staticY = [
+        -loopHeight(),
+        -loopHeight() * 2 - 18,
+        -loopHeight() * 3 - 10,
+      ]
       yRef.current = staticY
       setOffsets(staticY)
       return
@@ -118,16 +161,43 @@ export function SlotMachine({
       cancelAnimationFrame(rafRef.current)
       rafRef.current = 0
     }
-    setSettling(true)
-    const landBase = -(PRIZE_ORDER.length * 2 + targetIndex) * CELL
-    // Slight per-reel offset during ease so they don't look glued
-    const lands = [landBase, landBase - 4, landBase + 4]
-    yRef.current = lands
-    requestAnimationFrame(() => setOffsets(lands))
-    const t = window.setTimeout(() => {
+    if (settleTimerRef.current) {
+      window.clearTimeout(settleTimerRef.current)
+      settleTimerRef.current = 0
+    }
+
+    // 1) Freeze at current Y with NO transition (restart CSS transition cleanly)
+    setSettling(false)
+    const current = [...yRef.current]
+    setOffsets(current)
+
+    // 2) Next frames: enable easing and jump to a land far enough below current
+    let cancelled = false
+    const raf1 = requestAnimationFrame(() => {
+      if (cancelled) return
+      const lands = current.map((cur, i) =>
+        landOffset(cur, targetIndex, i, SETTLE_MIN_SPINS)
+      )
+      yRef.current = lands
+      requestAnimationFrame(() => {
+        if (cancelled) return
+        setSettling(true)
+        setOffsets(lands)
+      })
+    })
+
+    settleTimerRef.current = window.setTimeout(() => {
       onEndRef.current?.()
     }, durationMs + 120)
-    return () => window.clearTimeout(t)
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf1)
+      if (settleTimerRef.current) {
+        window.clearTimeout(settleTimerRef.current)
+        settleTimerRef.current = 0
+      }
+    }
   }, [spinning, targetIndex, durationMs])
 
   return (
@@ -152,7 +222,7 @@ export function SlotMachine({
                 transform: `translateY(${offsets[r]}px)`,
                 transition: settling
                   ? `transform ${durationMs - r * 180}ms cubic-bezier(0.12, 0.9, 0.2, 1)`
-                  : undefined,
+                  : 'none',
               }}
             >
               {strip.map((amt, i) => {
