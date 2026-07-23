@@ -31,9 +31,11 @@ export const PRIZE_CHARS: Record<
 }
 
 export function prizeIconUrl(amount: number): string {
+  // NOTE: must NOT use `/lottery/*` — that path collides with the SPA route
+  // and the embedded static directory causes /lottery ↔ /lottery/ redirect loops.
   const meta = PRIZE_CHARS[amount]
-  if (!meta) return '/lottery/prize-0.5-lazy-sheep.png'
-  return `/lottery/${meta.file}`
+  if (!meta) return '/assets/lottery/prize-0.5-lazy-sheep.png'
+  return `/assets/lottery/${meta.file}`
 }
 
 export function prizeIndex(amount: number): number {
