@@ -7,6 +7,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"gorm.io/gorm"
 )
@@ -148,6 +149,99 @@ func GetRedemptionByKey(key string) (*Redemption, error) {
 	return redemption, err
 }
 
+// affiliateRedeemAmountThresholdUSD is the display-dollar threshold for invitee
+// first-redeem inviter rebate: amount <= threshold → 10%, amount > threshold → 5%.
+const affiliateRedeemAmountThresholdUSD = 20.0
+
+// affiliateRebateRateForRedeemQuota returns the inviter rebate rate (0–1) for a
+// first-time redemption whose face value is redeemQuota (internal quota units).
+func affiliateRebateRateForRedeemQuota(redeemQuota int) float64 {
+	if redeemQuota <= 0 || common.QuotaPerUnit <= 0 {
+		return 0
+	}
+	amountUSD := float64(redeemQuota) / common.QuotaPerUnit
+	if amountUSD <= affiliateRedeemAmountThresholdUSD {
+		return 0.10
+	}
+	return 0.05
+}
+
+// affiliateRebateQuotaForRedeem returns inviter aff_quota credit for a first redeem.
+func affiliateRebateQuotaForRedeem(redeemQuota int) int {
+	rate := affiliateRebateRateForRedeemQuota(redeemQuota)
+	if rate <= 0 {
+		return 0
+	}
+	// Integer percent of face value (10% / 5%).
+	return int(float64(redeemQuota) * rate)
+}
+
+// firstRedeemAffiliateReward is filled inside the redeem TX when the inviter is paid.
+type firstRedeemAffiliateReward struct {
+	InviterId    int
+	InviteeName  string
+	RewardQuota  int
+	RatePercent  int
+	RedeemQuota  int
+}
+
+// tryAccrueFirstRedeemAffiliateReward credits the inviter only when this is the
+// invitee's first successful redemption code use. Must run inside the redeem TX
+// after the code is marked used, with the invitee row locked when possible.
+func tryAccrueFirstRedeemAffiliateReward(tx *gorm.DB, inviteeId int, redeemQuota int, redemptionId int) (*firstRedeemAffiliateReward, error) {
+	if inviteeId == 0 || redeemQuota <= 0 || redemptionId == 0 {
+		return nil, nil
+	}
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return nil, nil
+	}
+
+	invitee := &User{}
+	if err := lockForUpdate(tx).Select("id", "inviter_id", "username").First(invitee, "id = ?", inviteeId).Error; err != nil {
+		return nil, err
+	}
+	if invitee.InviterId == 0 {
+		return nil, nil
+	}
+
+	// Concurrent first-redeems serialize on the invitee lock above; count other
+	// used codes so only the true first redeem pays the inviter.
+	var priorCount int64
+	if err := tx.Model(&Redemption{}).
+		Where("used_user_id = ? AND status = ? AND id <> ?", inviteeId, common.RedemptionCodeStatusUsed, redemptionId).
+		Count(&priorCount).Error; err != nil {
+		return nil, err
+	}
+	if priorCount > 0 {
+		return nil, nil
+	}
+
+	reward := affiliateRebateQuotaForRedeem(redeemQuota)
+	if reward <= 0 {
+		return nil, nil
+	}
+
+	result := tx.Model(&User{}).Where("id = ?", invitee.InviterId).Updates(map[string]interface{}{
+		"aff_quota":   gorm.Expr("aff_quota + ?", reward),
+		"aff_history": gorm.Expr("aff_history + ?", reward),
+	})
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		// Inviter missing: skip quietly (invitee still gets redeem credit).
+		return nil, nil
+	}
+
+	return &firstRedeemAffiliateReward{
+		InviterId:   invitee.InviterId,
+		InviteeName: invitee.Username,
+		RewardQuota: reward,
+		RatePercent: int(affiliateRebateRateForRedeemQuota(redeemQuota) * 100),
+		RedeemQuota: redeemQuota,
+	}, nil
+}
+
 func Redeem(key string, userId int) (quota int, err error) {
 	if key == "" {
 		return 0, errors.New("未提供兑换码")
@@ -156,6 +250,7 @@ func Redeem(key string, userId int) (quota int, err error) {
 		return 0, errors.New("无效的 user id")
 	}
 	redemption := &Redemption{}
+	var affReward *firstRedeemAffiliateReward
 
 	keyCol := "`key`"
 	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
@@ -189,13 +284,28 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if result.RowsAffected == 0 {
 			return errors.New("该兑换码已被使用")
 		}
-		return tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error
+		if err := tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error; err != nil {
+			return err
+		}
+		// Inviter rebate: only on invitee's first successful redemption.
+		reward, err := tryAccrueFirstRedeemAffiliateReward(tx, userId, redemption.Quota, redemption.Id)
+		if err != nil {
+			return err
+		}
+		affReward = reward
+		return nil
 	})
 	if err != nil {
 		common.SysError("redemption failed: " + err.Error())
 		return 0, ErrRedeemFailed
 	}
 	RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
+	if affReward != nil && affReward.RewardQuota > 0 {
+		RecordLog(affReward.InviterId, LogTypeSystem, fmt.Sprintf(
+			"邀请用户 %s 首次兑换码充值 %s，奖励邀请人 %s（%d%%）",
+			affReward.InviteeName, logger.LogQuota(affReward.RedeemQuota), logger.LogQuota(affReward.RewardQuota), affReward.RatePercent,
+		))
+	}
 	return redemption.Quota, nil
 }
 

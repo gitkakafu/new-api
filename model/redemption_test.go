@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -110,7 +111,7 @@ func setupRedeemFixture(t *testing.T, quota int) (userId int, key string) {
 		DB.Exec("DELETE FROM logs")
 	})
 
-	user := &User{Username: "redeem-user", Password: "password", Status: common.UserStatusEnabled, Quota: 0}
+	user := &User{Username: "redeem-user", Password: "password", Status: common.UserStatusEnabled, AffCode: "rdm1", Quota: 0}
 	require.NoError(t, DB.Create(user).Error)
 
 	key = "10000000000000000000000000000001"
@@ -178,4 +179,165 @@ func TestRedeemConcurrentSingleSuccess(t *testing.T) {
 	var user User
 	require.NoError(t, DB.First(&user, "id = ?", userId).Error)
 	assert.Equal(t, 300, user.Quota, "quota must be credited exactly once")
+}
+
+
+func confirmPaymentComplianceForModelTest(t *testing.T) {
+	t.Helper()
+	paymentSetting := operation_setting.GetPaymentSetting()
+	originalConfirmed := paymentSetting.ComplianceConfirmed
+	originalTermsVersion := paymentSetting.ComplianceTermsVersion
+	t.Cleanup(func() {
+		paymentSetting.ComplianceConfirmed = originalConfirmed
+		paymentSetting.ComplianceTermsVersion = originalTermsVersion
+	})
+	paymentSetting.ComplianceConfirmed = true
+	paymentSetting.ComplianceTermsVersion = operation_setting.CurrentComplianceTermsVersion
+}
+
+func TestAffiliateRebateRateForRedeemQuota(t *testing.T) {
+	// 500000 units = $1
+	unit := int(common.QuotaPerUnit)
+	assert.Equal(t, 0.10, affiliateRebateRateForRedeemQuota(unit*20))   // $20 → 10%
+	assert.Equal(t, 0.10, affiliateRebateRateForRedeemQuota(unit*10))   // $10 → 10%
+	assert.Equal(t, 0.05, affiliateRebateRateForRedeemQuota(unit*20+1)) // >$20 → 5%
+	assert.Equal(t, 0.05, affiliateRebateRateForRedeemQuota(unit*50))
+	assert.Equal(t, 0.0, affiliateRebateRateForRedeemQuota(0))
+	assert.Equal(t, unit*2, affiliateRebateQuotaForRedeem(unit*20)) // 10% of $20 = $2
+	assert.Equal(t, int(float64(unit*50)*0.05), affiliateRebateQuotaForRedeem(unit*50))
+}
+
+func TestRedeemFirstCodeRewardsInviterTenPercent(t *testing.T) {
+	confirmPaymentComplianceForModelTest(t)
+	require.NoError(t, DB.AutoMigrate(&User{}, &Redemption{}, &Log{}))
+	DB.Exec("DELETE FROM redemptions")
+	DB.Exec("DELETE FROM users")
+	DB.Exec("DELETE FROM logs")
+	t.Cleanup(func() {
+		DB.Exec("DELETE FROM redemptions")
+		DB.Exec("DELETE FROM users")
+		DB.Exec("DELETE FROM logs")
+	})
+
+	inviter := &User{Username: "aff-inviter", Password: "password", Status: common.UserStatusEnabled, AffCode: "aff1", AffQuota: 0, AffHistoryQuota: 0}
+	require.NoError(t, DB.Create(inviter).Error)
+	invitee := &User{Username: "aff-invitee", Password: "password", Status: common.UserStatusEnabled, AffCode: "aff2", InviterId: inviter.Id, Quota: 0}
+	require.NoError(t, DB.Create(invitee).Error)
+
+	// $10 face value → 10% rebate
+	quota := int(common.QuotaPerUnit * 10)
+	key := "20000000000000000000000000000001"
+	require.NoError(t, DB.Create(&Redemption{
+		Name: "aff-first", Key: key, Status: common.RedemptionCodeStatusEnabled,
+		Quota: quota, CreatedTime: common.GetTimestamp(),
+	}).Error)
+
+	got, err := Redeem(key, invitee.Id)
+	require.NoError(t, err)
+	assert.Equal(t, quota, got)
+
+	var inviterAfter User
+	require.NoError(t, DB.First(&inviterAfter, "id = ?", inviter.Id).Error)
+	wantReward := int(float64(quota) * 0.10)
+	assert.Equal(t, wantReward, inviterAfter.AffQuota)
+	assert.Equal(t, wantReward, inviterAfter.AffHistoryQuota)
+
+	var inviteeAfter User
+	require.NoError(t, DB.First(&inviteeAfter, "id = ?", invitee.Id).Error)
+	assert.Equal(t, quota, inviteeAfter.Quota)
+}
+
+func TestRedeemFirstCodeRewardsInviterFivePercentAbove20(t *testing.T) {
+	confirmPaymentComplianceForModelTest(t)
+	require.NoError(t, DB.AutoMigrate(&User{}, &Redemption{}))
+	DB.Exec("DELETE FROM redemptions")
+	DB.Exec("DELETE FROM users")
+	t.Cleanup(func() {
+		DB.Exec("DELETE FROM redemptions")
+		DB.Exec("DELETE FROM users")
+	})
+
+	inviter := &User{Username: "aff-inviter2", Password: "password", Status: common.UserStatusEnabled, AffCode: "af21"}
+	require.NoError(t, DB.Create(inviter).Error)
+	invitee := &User{Username: "aff-invitee2", Password: "password", Status: common.UserStatusEnabled, AffCode: "af22", InviterId: inviter.Id}
+	require.NoError(t, DB.Create(invitee).Error)
+
+	// $50 face value → 5% rebate
+	quota := int(common.QuotaPerUnit * 50)
+	key := "20000000000000000000000000000002"
+	require.NoError(t, DB.Create(&Redemption{
+		Name: "aff-first-big", Key: key, Status: common.RedemptionCodeStatusEnabled,
+		Quota: quota, CreatedTime: common.GetTimestamp(),
+	}).Error)
+
+	_, err := Redeem(key, invitee.Id)
+	require.NoError(t, err)
+
+	var inviterAfter User
+	require.NoError(t, DB.First(&inviterAfter, "id = ?", inviter.Id).Error)
+	wantReward := int(float64(quota) * 0.05)
+	assert.Equal(t, wantReward, inviterAfter.AffQuota)
+	assert.Equal(t, wantReward, inviterAfter.AffHistoryQuota)
+}
+
+func TestRedeemSecondCodeDoesNotRewardInviter(t *testing.T) {
+	confirmPaymentComplianceForModelTest(t)
+	require.NoError(t, DB.AutoMigrate(&User{}, &Redemption{}))
+	DB.Exec("DELETE FROM redemptions")
+	DB.Exec("DELETE FROM users")
+	t.Cleanup(func() {
+		DB.Exec("DELETE FROM redemptions")
+		DB.Exec("DELETE FROM users")
+	})
+
+	inviter := &User{Username: "aff-inviter3", Password: "password", Status: common.UserStatusEnabled, AffCode: "af31"}
+	require.NoError(t, DB.Create(inviter).Error)
+	invitee := &User{Username: "aff-invitee3", Password: "password", Status: common.UserStatusEnabled, AffCode: "af32", InviterId: inviter.Id}
+	require.NoError(t, DB.Create(invitee).Error)
+
+	q1 := int(common.QuotaPerUnit * 10)
+	k1 := "20000000000000000000000000000003"
+	require.NoError(t, DB.Create(&Redemption{
+		Name: "aff-1", Key: k1, Status: common.RedemptionCodeStatusEnabled,
+		Quota: q1, CreatedTime: common.GetTimestamp(),
+	}).Error)
+	_, err := Redeem(k1, invitee.Id)
+	require.NoError(t, err)
+
+	var inviterAfterFirst User
+	require.NoError(t, DB.First(&inviterAfterFirst, "id = ?", inviter.Id).Error)
+	firstReward := inviterAfterFirst.AffQuota
+	require.Greater(t, firstReward, 0)
+
+	q2 := int(common.QuotaPerUnit * 10)
+	k2 := "20000000000000000000000000000004"
+	require.NoError(t, DB.Create(&Redemption{
+		Name: "aff-2", Key: k2, Status: common.RedemptionCodeStatusEnabled,
+		Quota: q2, CreatedTime: common.GetTimestamp(),
+	}).Error)
+	_, err = Redeem(k2, invitee.Id)
+	require.NoError(t, err)
+
+	var inviterAfterSecond User
+	require.NoError(t, DB.First(&inviterAfterSecond, "id = ?", inviter.Id).Error)
+	assert.Equal(t, firstReward, inviterAfterSecond.AffQuota, "second redeem must not add inviter reward")
+	assert.Equal(t, firstReward, inviterAfterSecond.AffHistoryQuota)
+}
+
+func TestRedeemWithoutInviterNoAffiliate(t *testing.T) {
+	confirmPaymentComplianceForModelTest(t)
+	userId, key := setupRedeemFixture(t, int(common.QuotaPerUnit*10))
+	// ensure no inviter
+	require.NoError(t, DB.Model(&User{}).Where("id = ?", userId).Update("inviter_id", 0).Error)
+
+	// create a dummy inviter that must not change
+	inviter := &User{Username: "aff-unrelated", Password: "password", Status: common.UserStatusEnabled, AffCode: "af99", AffQuota: 7}
+	require.NoError(t, DB.Create(inviter).Error)
+
+	_, err := Redeem(key, userId)
+	require.NoError(t, err)
+
+	var inviterAfter User
+	require.NoError(t, DB.First(&inviterAfter, "id = ?", inviter.Id).Error)
+	assert.Equal(t, 7, inviterAfter.AffQuota)
 }

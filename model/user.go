@@ -489,15 +489,15 @@ func HardDeleteUserById(id int) error {
 	return user.HardDelete()
 }
 
+// inviteUser records a successful invite (aff_count only).
+// Inviter quota is no longer granted on registration; it is granted when the
+// invitee first redeems a code (see tryAccrueFirstRedeemAffiliateReward).
 func inviteUser(inviterId int) (err error) {
-	user, err := GetUserById(inviterId, true)
-	if err != nil {
-		return err
+	if inviterId == 0 {
+		return nil
 	}
-	user.AffCount++
-	user.AffQuota += common.QuotaForInviter
-	user.AffHistoryQuota += common.QuotaForInviter
-	return DB.Save(user).Error
+	return DB.Model(&User{}).Where("id = ?", inviterId).
+		Update("aff_count", gorm.Expr("aff_count + ?", 1)).Error
 }
 
 func (user *User) TransferAffQuotaToQuota(quota int) error {
@@ -633,15 +633,17 @@ func (user *User) finishInsert(inviterId int) {
 	if common.QuotaForNewUser > 0 {
 		RecordLog(user.Id, LogTypeSystem, fmt.Sprintf("新用户注册赠送 %s", logger.LogQuota(common.QuotaForNewUser)))
 	}
-	if inviterId != 0 && operation_setting.IsPaymentComplianceConfirmed() {
-		if common.QuotaForInvitee > 0 {
+	if inviterId != 0 {
+		// Always count the invite relationship; monetary reward is deferred to
+		// the invitee's first redemption code use.
+		if err := inviteUser(inviterId); err != nil {
+			common.SysLog(fmt.Sprintf("inviteUser failed for inviter %d: %v", inviterId, err))
+		} else {
+			RecordLog(inviterId, LogTypeSystem, fmt.Sprintf("邀请用户 %s 注册成功（奖励将在对方首次使用兑换码时发放）", user.Username))
+		}
+		if operation_setting.IsPaymentComplianceConfirmed() && common.QuotaForInvitee > 0 {
 			_ = IncreaseUserQuota(user.Id, common.QuotaForInvitee, true)
 			RecordLog(user.Id, LogTypeSystem, fmt.Sprintf("使用邀请码赠送 %s", logger.LogQuota(common.QuotaForInvitee)))
-		}
-		if common.QuotaForInviter > 0 {
-			//_ = IncreaseUserQuota(inviterId, common.QuotaForInviter)
-			RecordLog(inviterId, LogTypeSystem, fmt.Sprintf("邀请用户赠送 %s", logger.LogQuota(common.QuotaForInviter)))
-			_ = inviteUser(inviterId)
 		}
 	}
 }
@@ -690,14 +692,15 @@ func (user *User) FinalizeOAuthUserCreation(inviterId int) {
 	if common.QuotaForNewUser > 0 {
 		RecordLog(user.Id, LogTypeSystem, fmt.Sprintf("新用户注册赠送 %s", logger.LogQuota(common.QuotaForNewUser)))
 	}
-	if inviterId != 0 && operation_setting.IsPaymentComplianceConfirmed() {
-		if common.QuotaForInvitee > 0 {
+	if inviterId != 0 {
+		if err := inviteUser(inviterId); err != nil {
+			common.SysLog(fmt.Sprintf("inviteUser failed for inviter %d: %v", inviterId, err))
+		} else {
+			RecordLog(inviterId, LogTypeSystem, fmt.Sprintf("邀请用户 %s 注册成功（奖励将在对方首次使用兑换码时发放）", user.Username))
+		}
+		if operation_setting.IsPaymentComplianceConfirmed() && common.QuotaForInvitee > 0 {
 			_ = IncreaseUserQuota(user.Id, common.QuotaForInvitee, true)
 			RecordLog(user.Id, LogTypeSystem, fmt.Sprintf("使用邀请码赠送 %s", logger.LogQuota(common.QuotaForInvitee)))
-		}
-		if common.QuotaForInviter > 0 {
-			RecordLog(inviterId, LogTypeSystem, fmt.Sprintf("邀请用户赠送 %s", logger.LogQuota(common.QuotaForInviter)))
-			_ = inviteUser(inviterId)
 		}
 	}
 }

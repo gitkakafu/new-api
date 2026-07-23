@@ -200,7 +200,7 @@ export function QuotaSettingsSection({
                   </FormControl>
                   <FormDescription>
                     {t(
-                      'Quota given to users who invite others ({{formattedQuota}})',
+                      'Legacy fixed inviter bonus on signup (unused). Inviter reward is now first-redeem only: 10% if code ≤ $20, else 5% ({{formattedQuota}} shows the old setting value)',
                       {
                         formattedQuota: formatQuotaInputValue(field.value),
                       }
