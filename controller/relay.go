@@ -178,6 +178,15 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		}
 	}()
 
+	// Image generation/edits must never failover to a lower-priority backup
+	// channel (e.g. wishtoapp). Local image success on backup still often
+	// failed end-to-end in new-api; chat failover stays unchanged.
+	imageNoBackupFailover := isImageGenerationOrEditRequest(c, relayFormat, relayInfo)
+	maxPriorityRetry := common.RetryTimes
+	if imageNoBackupFailover {
+		maxPriorityRetry = 0
+	}
+
 	retryParam := &service.RetryParam{
 		Ctx:         c,
 		TokenGroup:  relayInfo.TokenGroup,
@@ -188,7 +197,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	relayInfo.RetryIndex = 0
 	relayInfo.LastError = nil
 
-	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
+	for ; retryParam.GetRetry() <= maxPriorityRetry; retryParam.IncreaseRetry() {
 		relayInfo.RetryIndex = retryParam.GetRetry()
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
 		if channelErr != nil {
@@ -231,7 +240,11 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
 
-		if !shouldRetry(c, newAPIError, common.RetryTimes-retryParam.GetRetry()) {
+		// Image gen/edit: never step down to lower-priority (backup) channels.
+		if imageNoBackupFailover {
+			break
+		}
+		if !shouldRetry(c, newAPIError, maxPriorityRetry-retryParam.GetRetry()) {
 			break
 		}
 	}
@@ -354,6 +367,41 @@ func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) b
 		return false
 	}
 	return operation_setting.ShouldRetryByStatusCode(code)
+}
+
+// isImageGenerationOrEditRequest reports whether this relay call is an Images
+// API generation or edit (including playground /pg/images/*). These must not
+// failover across channel priorities to external backup upstreams.
+func isImageGenerationOrEditRequest(c *gin.Context, relayFormat types.RelayFormat, info *relaycommon.RelayInfo) bool {
+	if relayFormat == types.RelayFormatOpenAIImage {
+		return true
+	}
+	if info != nil {
+		switch info.RelayMode {
+		case relayconstant.RelayModeImagesGenerations, relayconstant.RelayModeImagesEdits:
+			return true
+		}
+		if common.IsImageGenerationModel(info.OriginModelName) {
+			// Image models used via Responses/tools still must not hit backup.
+			// Path check keeps pure chat/completions on the same model names safe
+			// if any ever share a prefix (none today for gpt-image-*).
+			if c != nil && c.Request != nil {
+				path := c.Request.URL.Path
+				if strings.Contains(path, "/images/generations") ||
+					strings.Contains(path, "/images/edits") ||
+					strings.HasSuffix(path, "/edits") {
+					return true
+				}
+			}
+		}
+	}
+	if c != nil && c.Request != nil {
+		path := c.Request.URL.Path
+		if strings.Contains(path, "/images/generations") || strings.Contains(path, "/images/edits") {
+			return true
+		}
+	}
+	return false
 }
 
 func processChannelError(c *gin.Context, channelError types.ChannelError, err *types.NewAPIError) {
