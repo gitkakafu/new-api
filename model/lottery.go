@@ -237,6 +237,10 @@ func UserLotteryDraw(userId int, mode string) (*LotteryDrawResult, error) {
 	if setting == nil || !setting.Enabled {
 		return nil, errors.New("抽奖功能未启用")
 	}
+	// Public demo guest: same RNG, no balance / log / highlight side effects.
+	if IsLotteryGuestUserId(userId) {
+		return UserLotteryDrawGuest(userId, mode)
+	}
 
 	mode = strings.ToLower(strings.TrimSpace(mode))
 	var need int
@@ -521,6 +525,49 @@ func GetLotteryStatusBundle(userId int) (map[string]interface{}, error) {
 	singleW := setting.EffectiveSingleWeights()
 	multiW := setting.EffectiveMultiWeights()
 	drawDate := LotteryToday(setting)
+
+	// Guest demo: unlimited draws, fixed balance, always allowed.
+	if IsLotteryGuestUserId(userId) {
+		targetQuota := DisplayAmountToQuota(common.LotteryGuestQuotaDisplay)
+		if targetQuota > 0 {
+			_ = DB.Model(&User{}).Where("id = ?", userId).Update("quota", targetQuota).Error
+		}
+		user, err := GetUserById(userId, false)
+		if err != nil {
+			return nil, err
+		}
+		quota := user.Quota
+		if quota != targetQuota && targetQuota > 0 {
+			quota = targetQuota
+		}
+		return map[string]interface{}{
+			"enabled":              setting.Enabled,
+			"single_cost":          setting.SingleCost,
+			"multi_cost":           setting.MultiCost,
+			"multi_draws":          setting.MultiDraws,
+			"daily_draw_limit":     common.LotteryGuestRemainingDraws,
+			"draws_used_today":     0,
+			"remaining_draws":      common.LotteryGuestRemainingDraws,
+			"can_single":           true,
+			"can_multi":            true,
+			"quota":                quota,
+			"public_win_min":       setting.PublicWinMin,
+			"public_win_limit":     setting.PublicWinLimit,
+			"big_win_threshold":    setting.BigWinThreshold,
+			"prize_order":          operation_setting.PrizeOrder(),
+			"single_weights":       WeightsToPublicTable(singleW),
+			"multi_weights":        WeightsToPublicTable(multiW),
+			"single_ev":            ExpectedValue(singleW),
+			"multi_ev_per_draw":    ExpectedValue(multiW),
+			"multi_ev_total":       ExpectedValue(multiW) * float64(setting.MultiDraws),
+			"multi_subsidy":        ExpectedValue(multiW)*float64(setting.MultiDraws) - setting.MultiCost,
+			"draw_date":            drawDate,
+			"timezone":             setting.Timezone,
+			"is_lottery_guest":     true,
+			"unlimited_draws":      true,
+		}, nil
+	}
+
 	used, err := GetUserLotteryDrawsToday(userId, drawDate)
 	if err != nil {
 		return nil, err
@@ -563,5 +610,7 @@ func GetLotteryStatusBundle(userId int) (map[string]interface{}, error) {
 		"multi_subsidy":        ExpectedValue(multiW)*float64(setting.MultiDraws) - setting.MultiCost,
 		"draw_date":            drawDate,
 		"timezone":             setting.Timezone,
+		"is_lottery_guest":     false,
+		"unlimited_draws":      false,
 	}, nil
 }

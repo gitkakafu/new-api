@@ -228,6 +228,8 @@ export interface UserWalletData {
   id: number
   /** Username */
   username: string
+  /** Public lottery demo account */
+  is_lottery_guest?: boolean
   /** Current quota balance */
   quota: number
   /** Total used quota */

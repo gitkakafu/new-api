@@ -37,6 +37,8 @@ export interface LotteryStatus {
   multi_subsidy: number
   draw_date: string
   timezone: string
+  is_lottery_guest?: boolean
+  unlimited_draws?: boolean
 }
 
 export interface LotteryDrawResult {

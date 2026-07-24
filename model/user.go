@@ -1080,6 +1080,9 @@ func ResetUserPasswordByEmail(email string, password string) error {
 	if err != nil {
 		return err
 	}
+	if IsLotteryGuestUsername(user.Username) || IsLotteryGuestUserId(user.Id) {
+		return errors.New("抽奖体验号密码不可重置")
+	}
 	hashedPassword, err := common.Password2Hash(password)
 	if err != nil {
 		return err

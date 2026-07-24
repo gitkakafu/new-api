@@ -89,10 +89,14 @@ export function LotteryPage() {
         ? {
             ...s,
             remaining_draws: result.remaining_draws,
-            draws_used_today: s.daily_draw_limit - result.remaining_draws,
+            draws_used_today: s.is_lottery_guest
+              ? 0
+              : s.daily_draw_limit - result.remaining_draws,
             quota: result.quota,
-            can_single: result.remaining_draws >= 1,
-            can_multi: false,
+            can_single: s.is_lottery_guest || result.remaining_draws >= 1,
+            can_multi: s.is_lottery_guest
+              ? true
+              : false,
           }
         : s
     )
@@ -107,16 +111,18 @@ export function LotteryPage() {
       window.setTimeout(() => setHighlight(false), 2000)
     }
 
-    // optimistic public wins for ≥2
-    const newWins: PublicWinItem[] = result.prizes
-      .filter((p) => p >= 2)
-      .map((p) => ({
-        date: result.draw_date,
-        username: t('我'),
-        prize: p,
-      }))
-    if (newWins.length) {
-      setPublicWins((prev) => [...newWins, ...prev].slice(0, 100))
+        // Guest dry-run: do not pollute public highlight ticker.
+    if (!status?.is_lottery_guest) {
+      const newWins: PublicWinItem[] = result.prizes
+        .filter((p) => p >= 2)
+        .map((p) => ({
+          date: result.draw_date,
+          username: t('我'),
+          prize: p,
+        }))
+      if (newWins.length) {
+        setPublicWins((prev) => [...newWins, ...prev].slice(0, 100))
+      }
     }
     pendingRef.current = null
     void refreshStatus()
@@ -173,6 +179,14 @@ export function LotteryPage() {
       <SectionPageLayout>
         <SectionPageLayout.Title>{t('抽奖')}</SectionPageLayout.Title>
         <SectionPageLayout.Content>
+        {status?.is_lottery_guest ? (
+          <div className='mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200'>
+            {t(
+              '当前为公开抽奖体验号：不扣余额、不写入日志与高光、次数无限，仅用于验证概率。每秒最多抽 1 次。'
+            )}
+          </div>
+        ) : null}
+
           <div className='text-muted-foreground p-8 text-center text-sm'>
             {t('加载中…')}
           </div>

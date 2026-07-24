@@ -62,6 +62,19 @@ func authHelper(c *gin.Context, minRole int) {
 	}
 	setDashboardAuthContext(c, user, identity, useAccessToken)
 
+	// Public lottery demo account: only wallet + lottery dashboard APIs.
+	if common.IsLotteryGuestUsername(user.Username) {
+		if !lotteryGuestAllowed(c.Request.Method, c.FullPath(), c.Request.URL.Path) {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": "抽奖体验号仅可使用钱包与抽奖功能",
+				"code":    "LOTTERY_GUEST_RESTRICTED",
+			})
+			return
+		}
+	}
+
+
 	// 管理/root 写操作审计兜底：内聚在鉴权链路里，保证任何经过 AdminAuth/RootAuth
 	// 的写接口都会自动留痕（无需在路由上单独挂审计中间件，避免漏挂）。
 	// handler 内手动埋点者会设置 ContextKeyAuditLogged，finishAdminAudit 据此跳过。
@@ -341,6 +354,9 @@ func TokenAuthReadOnly() func(c *gin.Context) {
 			c.Abort()
 			return
 		}
+		if AbortIfLotteryGuest(c, token.UserId) {
+			return
+		}
 
 		c.Set("id", token.UserId)
 		c.Set("token_id", token.Id)
@@ -454,6 +470,11 @@ func TokenAuth() func(c *gin.Context) {
 		}
 
 		userCache.WriteContext(c)
+
+		// Lottery demo guest must never use relay / OpenAI-compatible APIs.
+		if AbortIfLotteryGuest(c, token.UserId) {
+			return
+		}
 
 		userGroup := userCache.Group
 		tokenGroup := token.Group

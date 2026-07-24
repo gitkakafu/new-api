@@ -165,6 +165,10 @@ func GetTokenUsage(c *gin.Context) {
 }
 
 func AddToken(c *gin.Context) {
+	if model.IsLotteryGuestUserId(c.GetInt("id")) {
+		common.ApiErrorMsg(c, "抽奖体验号不可创建令牌")
+		return
+	}
 	token := model.Token{}
 	err := c.ShouldBindJSON(&token)
 	if err != nil {

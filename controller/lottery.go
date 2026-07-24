@@ -56,6 +56,11 @@ func GetLotteryHistory(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
+	if model.IsLotteryGuestUserId(userId) {
+		// Demo draws are not persisted.
+		common.ApiSuccess(c, gin.H{"items": []any{}})
+		return
+	}
 	items, err := model.GetUserLotteryHistory(userId, 50)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})

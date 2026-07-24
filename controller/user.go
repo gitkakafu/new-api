@@ -399,6 +399,10 @@ func GetUser(c *gin.Context) {
 
 func GenerateAccessToken(c *gin.Context) {
 	id := c.GetInt("id")
+	if model.IsLotteryGuestUserId(id) {
+		common.ApiErrorMsg(c, "抽奖体验号不可生成访问令牌")
+		return
+	}
 	user, err := model.GetUserById(id, true)
 	if err != nil {
 		common.ApiError(c, err)
@@ -514,11 +518,20 @@ func GetSelf(c *gin.Context) {
 // administrator-only remarks.
 func buildSelfUserData(user *model.User) map[string]interface{} {
 	userSetting := user.GetSetting()
+	isGuest := model.IsLotteryGuestUsername(user.Username)
+	if isGuest {
+		userSetting.SidebarModules = model.LotteryGuestSidebarModulesJSON()
+	}
 	permissions := calculateUserPermissions(user.Role)
 	permissions["admin_permissions"] = authz.Capabilities(user.Id, user.Role)
+	if isGuest {
+		// Demo account cannot re-enable hidden modules via self-service.
+		permissions["sidebar_settings"] = false
+	}
 	return map[string]interface{}{
 		"id":                user.Id,
 		"username":          user.Username,
+		"is_lottery_guest":  isGuest,
 		"display_name":      user.DisplayName,
 		"role":              user.Role,
 		"status":            user.Status,
@@ -693,6 +706,16 @@ func UpdateUser(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if model.IsLotteryGuestUsername(originUser.Username) {
+		if updatedUser.Password != "" && updatedUser.Password != "" {
+			common.ApiErrorMsg(c, "抽奖体验号密码不可修改")
+			return
+		}
+		if updatedUser.Username != "" && updatedUser.Username != originUser.Username {
+			common.ApiErrorMsg(c, "抽奖体验号用户名不可修改")
+			return
+		}
+	}
 	if updatedUser.Role != common.RoleGuestUser && updatedUser.Role != originUser.Role {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
@@ -797,6 +820,10 @@ func UpdateSelf(c *gin.Context) {
 	// 检查是否是用户设置更新请求 (sidebar_modules 或 language)
 	if sidebarModules, sidebarExists := requestData["sidebar_modules"]; sidebarExists {
 		userId := c.GetInt("id")
+		if model.IsLotteryGuestUserId(userId) {
+			common.ApiErrorMsg(c, "抽奖体验号不可修改侧边栏")
+			return
+		}
 		user, err := model.GetUserById(userId, false)
 		if err != nil {
 			common.ApiError(c, err)
@@ -847,6 +874,10 @@ func UpdateSelf(c *gin.Context) {
 	}
 
 	// 原有的用户信息更新逻辑
+	if model.IsLotteryGuestUserId(c.GetInt("id")) {
+		common.ApiErrorMsg(c, "抽奖体验号不允许修改资料或密码")
+		return
+	}
 	var user model.User
 	requestDataBytes, err := common.Marshal(requestData)
 	if err != nil {
@@ -987,6 +1018,10 @@ func DeleteUser(c *gin.Context) {
 }
 
 func DeleteSelf(c *gin.Context) {
+	if model.IsLotteryGuestUserId(c.GetInt("id")) {
+		common.ApiErrorMsg(c, "抽奖体验号不可删除")
+		return
+	}
 	id := c.GetInt("id")
 	user, _ := model.GetUserById(id, false)
 
@@ -1113,6 +1148,10 @@ func ManageUser(c *gin.Context) {
 	}
 	switch req.Action {
 	case "disable":
+		if model.IsLotteryGuestUsername(user.Username) {
+			common.ApiErrorMsg(c, "抽奖体验号不可禁用")
+			return
+		}
 		user.Status = common.UserStatusDisabled
 		if user.Role == common.RoleRootUser {
 			common.ApiErrorI18n(c, i18n.MsgUserCannotDisableRootUser)
@@ -1121,6 +1160,10 @@ func ManageUser(c *gin.Context) {
 	case "enable":
 		user.Status = common.UserStatusEnabled
 	case "delete":
+		if model.IsLotteryGuestUsername(user.Username) {
+			common.ApiErrorMsg(c, "抽奖体验号不可删除")
+			return
+		}
 		if user.Role == common.RoleRootUser {
 			common.ApiErrorI18n(c, i18n.MsgUserCannotDeleteRootUser)
 			return

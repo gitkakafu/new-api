@@ -29,6 +29,7 @@ export type UserPermissions = {
 export interface AuthUser {
   id: number
   username: string
+  is_lottery_guest?: boolean
   display_name?: string
   email?: string
   role: number

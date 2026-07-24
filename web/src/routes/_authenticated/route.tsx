@@ -21,6 +21,15 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { AuthenticatedLayout } from '@/components/layout'
 import { useAuthStore } from '@/stores/auth-store'
 
+const LOTTERY_GUEST_ALLOWED_PREFIXES = ['/lottery', '/wallet', '/announcements']
+
+function isLotteryGuestAllowedPath(pathname: string): boolean {
+  const path = pathname.split('?')[0] || '/'
+  return LOTTERY_GUEST_ALLOWED_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(prefix + '/')
+  )
+}
+
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ location }) => {
     const { auth } = useAuthStore.getState()
@@ -30,6 +39,13 @@ export const Route = createFileRoute('/_authenticated')({
         to: '/sign-in',
         search: { redirect: location.href },
       })
+    }
+
+    // Public lottery demo account: only wallet + lottery (+ announcements for the notice).
+    if (auth.user.is_lottery_guest || auth.user.username === 'lottery_guest') {
+      if (!isLotteryGuestAllowedPath(location.pathname)) {
+        throw redirect({ to: '/lottery' })
+      }
     }
   },
   component: AuthenticatedLayout,

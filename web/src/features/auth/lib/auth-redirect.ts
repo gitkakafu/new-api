@@ -78,3 +78,31 @@ export function sanitizeAuthRedirect(
 
   return `${redirectURL.pathname}${redirectURL.search}${redirectURL.hash}`
 }
+
+
+/** Default landing path after login. Lottery guest goes to the draw page. */
+export function getPostLoginPath(user: AuthUser | null | undefined): string {
+  if (user?.is_lottery_guest || user?.username === 'lottery_guest') {
+    return '/lottery'
+  }
+  return '/dashboard'
+}
+
+/** Clamp a sanitized redirect so lottery guests cannot land on forbidden routes. */
+export function resolveAuthRedirect(
+  user: AuthUser | null | undefined,
+  redirect: unknown,
+  origin: string
+): string {
+  const fallback = getPostLoginPath(user)
+  const sanitized = sanitizeAuthRedirect(redirect, origin)
+  if (!sanitized) return fallback
+  if (user?.is_lottery_guest || user?.username === 'lottery_guest') {
+    const path = sanitized.split('?')[0] || '/'
+    const allowed = ['/lottery', '/wallet', '/announcements']
+    if (!allowed.some((p) => path === p || path.startsWith(p + '/'))) {
+      return fallback
+    }
+  }
+  return sanitized
+}

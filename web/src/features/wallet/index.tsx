@@ -82,6 +82,9 @@ export function Wallet(props: WalletProps) {
 
   const { status } = useStatus()
   const { currency } = useSystemConfig()
+  const isLotteryGuest = Boolean(
+    user?.is_lottery_guest || user?.username === 'lottery_guest'
+  )
   const { topupInfo, presetAmounts, loading: topupLoading } = useTopupInfo()
 
   // Calculate effective exchange rate - when display type is USD, use rate of 1
@@ -288,6 +291,15 @@ export function Wallet(props: WalletProps) {
           <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
             <WalletStatsCard user={user} loading={userLoading} />
 
+            {isLotteryGuest ? (
+              <div className='rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200'>
+                {t(
+                  '抽奖体验号固定展示余额 10000，抽奖不扣费、不入账。充值、兑换、订阅等功能已禁用；请前往「抽奖」体验概率。'
+                )}
+              </div>
+            ) : null}
+
+            {!isLotteryGuest ? (
             <div
               className={
                 showSubscriptionPanel
@@ -346,6 +358,7 @@ export function Wallet(props: WalletProps) {
               }
               loading={affiliateLoading}
             />
+            ) : null}
           </div>
         </SectionPageLayout.Content>
       </SectionPageLayout>
