@@ -161,8 +161,11 @@ func EnsureLotteryGuestUser() error {
 	lotteryGuestID = user.Id
 	lotteryGuestIDMu.Unlock()
 
-	if err := updateUserCache(user); err != nil {
-		common.SysLog("lottery guest cache update: " + err.Error())
+	// Cache is optional at seed time; skip when Redis client is not ready.
+	if common.RedisEnabled && common.RDB != nil {
+		if err := updateUserCache(user); err != nil {
+			common.SysLog("lottery guest cache update: " + err.Error())
+		}
 	}
 	// Drop any tokens that may have been created historically.
 	if err := DB.Where("user_id = ?", user.Id).Delete(&Token{}).Error; err != nil {

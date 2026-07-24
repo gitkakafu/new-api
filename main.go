@@ -317,16 +317,6 @@ func InitResources() error {
 	}
 	model.InitOptionMap()
 
-	// Seed public lottery demo account + announcement (master only; idempotent).
-	if common.IsMasterNode {
-		if err := model.EnsureLotteryGuestUser(); err != nil {
-			common.SysError("failed to ensure lottery guest user: " + err.Error())
-		}
-		if err := model.EnsureLotteryGuestAnnouncement(); err != nil {
-			common.SysError("failed to ensure lottery guest announcement: " + err.Error())
-		}
-	}
-
 	// 清理旧的磁盘缓存文件
 	common.CleanupOldCacheFiles()
 
@@ -340,6 +330,17 @@ func InitResources() error {
 	err = common.InitRedisClient()
 	if err != nil {
 		return err
+	}
+
+	// Seed public lottery demo account + announcement (master only; idempotent).
+	// Must run after InitRedisClient: updateUserCache uses common.RDB when Redis is enabled.
+	if common.IsMasterNode {
+		if err := model.EnsureLotteryGuestUser(); err != nil {
+			common.SysError("failed to ensure lottery guest user: " + err.Error())
+		}
+		if err := model.EnsureLotteryGuestAnnouncement(); err != nil {
+			common.SysError("failed to ensure lottery guest announcement: " + err.Error())
+		}
 	}
 
 	perfmetrics.Init()
