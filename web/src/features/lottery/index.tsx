@@ -179,14 +179,6 @@ export function LotteryPage() {
       <SectionPageLayout>
         <SectionPageLayout.Title>{t('抽奖')}</SectionPageLayout.Title>
         <SectionPageLayout.Content>
-        {status?.is_lottery_guest ? (
-          <div className='mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200'>
-            {t(
-              '当前为公开抽奖体验号：不扣余额、不写入日志与高光、次数无限，仅用于验证概率。每秒最多抽 1 次。'
-            )}
-          </div>
-        ) : null}
-
           <div className='text-muted-foreground p-8 text-center text-sm'>
             {t('加载中…')}
           </div>
@@ -212,6 +204,13 @@ export function LotteryPage() {
     <SectionPageLayout>
       <SectionPageLayout.Title>{t('抽奖')}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
+        {status.is_lottery_guest ? (
+          <div className='mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200'>
+            {t(
+              '当前为公开抽奖体验号：不扣余额、不写入日志与高光、次数无限，仅用于验证概率。每秒最多抽 1 次。'
+            )}
+          </div>
+        ) : null}
         <BigWinBanner
           amount={bigWinAmount}
           visible={bigWinVisible}
@@ -229,13 +228,23 @@ export function LotteryPage() {
                       {t('余额抽奖')}
                     </CardTitle>
                     <CardDescription>
-                      {t('今日剩余')}{' '}
-                      <span className='text-foreground font-semibold'>
-                        {status.remaining_draws}
-                      </span>{' '}
-                      / {status.daily_draw_limit}
-                      {' · '}
-                      {t('余额')} {quotaLabel}
+                      {status.is_lottery_guest ? (
+                        <>
+                          {t('体验模式 · 无限次数')}
+                          {' · '}
+                          {t('余额')} {quotaLabel}
+                        </>
+                      ) : (
+                        <>
+                          {t('今日剩余')}{' '}
+                          <span className='text-foreground font-semibold'>
+                            {status.remaining_draws}
+                          </span>{' '}
+                          / {status.daily_draw_limit}
+                          {' · '}
+                          {t('余额')} {quotaLabel}
+                        </>
+                      )}
                     </CardDescription>
                   </div>
                   <div className='text-muted-foreground text-xs'>
